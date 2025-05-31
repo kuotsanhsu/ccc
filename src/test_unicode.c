@@ -8,7 +8,7 @@ int main() {
    * corresponds to U+4E8C, and <F0 90 8C 82> corresponds to U+10302.
    */
   const int code_points[] = {0x004D, 0x0430, 0x4E8C, 0x10302};
-  const char code_units[] = u8"\x4D\xD0\xB0\xE4\xBA\x8C\xF0\x90\x8C\x82";
+  const char8_t code_units[] = u8"\x4D\xD0\xB0\xE4\xBA\x8C\xF0\x90\x8C\x82";
   struct utf8_iter it = {code_units, code_units + sizeof(code_units) - 1};
   assert(it.end - it.pos == 10);
   const size_t n = sizeof(code_points) / sizeof(int);

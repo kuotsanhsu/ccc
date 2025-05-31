@@ -2,12 +2,17 @@
 #if __SIZEOF_INT__ != 4
 #error "size of int MUST be 4"
 #endif
+#if __STDC_VERSION__ >= 202311L
+#include <uchar.h>
+#else
+typedef unsigned char char8_t;
+#endif
 
 struct utf8_iter {
   /** `pos <= end`. */
-  const char *pos;
+  const char8_t *pos;
   /** MUST NOT derefence `end`. */
-  const char *const end;
+  const char8_t *const end;
 };
 
 /** Gets a [UTF-8](https://www.unicode.org/versions/Unicode16.0.0/core-spec/chapter-3/#G27506) code

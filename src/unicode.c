@@ -26,17 +26,17 @@ int utf8_getc(struct utf8_iter *it) {
 
   switch (a) {
   case 0xE0: // E0  A0..BF  80..BF
-    if (b >= 0x20) break;
-    else return -3;
+    if (b < 0x20) return -3;
+    break;
   case 0xED: // ED  80..9F  80..BF
-    if (b < 0x20) break;
-    else return -3;
+    if (b >= 0x20) return -3;
+    break;
   case 0xF0: // F0  90..BF  80..BF  80..BF
-    if (b >= 0x10) break;
-    else return -3;
+    if (b < 0x10) return -3;
+    break;
   case 0xF4: // F4  80..8F  80..BF  80..BF
-    if (b < 0x10) break;
-    else return -3;
+    if (b >= 0x10) return -3;
+    break;
   }
 
   if (it->pos == it->end) return -2;
