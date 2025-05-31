@@ -1,0 +1,14 @@
+{
+    "files.associations": {
+        ".clang-format": "yaml",
+        ".clangd": "yaml",
+        "*.h": "c"
+    },
+    "[c][yaml]": {
+        "editor.formatOnSave": true
+    },
+    "yaml.schemas": {
+        "https://json.schemastore.org/clang-format.json": ".clang-format",
+        "https://json.schemastore.org/clangd.json": ".clangd"
+    }
+}
