@@ -1,12 +1,14 @@
 #include "unicode.h"
 #include <cassert>
 #include <string_view>
+using namespace std::string_view_literals;
 
-void assert_code_points(const int *code_points, std::u8string_view code_units)
+void assert_code_points(std::ranges::input_range auto &&code_points,
+			std::u8string_view code_units)
 {
-	struct utf8_iter it = {code_units, code_units + sizeof(code_units) - 1};
-	for (size_t i = 0; i != n_code_points; ++i) {
-		assert(utf8_getc(&it) == code_points[i]);
+	struct utf8_iter it = {code_units.begin(), code_units.end()};
+	for (const int code_point : code_points) {
+		assert(utf8_getc(&it) == code_point);
 	}
 	assert(utf8_getc(&it) == -1);
 }
@@ -18,10 +20,8 @@ void assert_code_points(const int *code_points, std::u8string_view code_units)
  */
 void well_formed_D86_01()
 {
-	const int code_points[] = {0x41, 0xF1, 0x42};
-	const char8_t code_units[] = u8"\x41\xC3\xB1\x42";
-	struct utf8_iter it = {code_units, code_units + sizeof(code_units) - 1};
-	assert_code_points(code_points, sizeof(code_points) / sizeof(int), it);
+	assert_code_points(std::initializer_list{0x41, 0xF1, 0x42},
+			   u8"\x41\xC3\xB1\x42"sv);
 }
 
 /** The UTF-8 code unit sequence <41 C2 C3 B1 42> is ill-formed, because it
@@ -33,10 +33,8 @@ void well_formed_D86_01()
  */
 void ill_formed_D86_02()
 {
-	const int code_points[] = {0x41, -3, 0xF1, 0x42};
-	const char8_t code_units[] = u8"\x41\xC2\xC3\xB1\x42";
-	struct utf8_iter it = {code_units, code_units + sizeof(code_units) - 1};
-	assert_code_points(code_points, sizeof(code_points) / sizeof(int), it);
+	assert_code_points(std::initializer_list{0x41, -3, 0xF1, 0x42},
+			   u8"\x41\xC2\xC3\xB1\x42"sv);
 }
 
 /** In isolation, the UTF-8 code unit sequence <C2 C3> would be ill-formed, but
@@ -47,10 +45,7 @@ void ill_formed_D86_02()
  * minimal well-formed code unit subsequences. */
 void ill_formed_D86_03()
 {
-	const int code_points[] = {-3, -2};
-	const char8_t code_units[] = u8"\xC2\xC3";
-	struct utf8_iter it = {code_units, code_units + sizeof(code_units) - 1};
-	assert_code_points(code_points, sizeof(code_points) / sizeof(int), it);
+	assert_code_points(std::initializer_list{-3, -2}, u8"\xC2\xC3"sv);
 }
 
 /* In UTF-8, the code point sequence <004D, 0430, 4E8C, 10302> is represented as
@@ -60,11 +55,9 @@ void ill_formed_D86_03()
  */
 void well_formed_D92_01()
 {
-	const int code_points[] = {0x004D, 0x0430, 0x4E8C, 0x10302};
-	const char8_t code_units[] =
-	    u8"\x4D\xD0\xB0\xE4\xBA\x8C\xF0\x90\x8C\x82";
-	struct utf8_iter it = {code_units, code_units + sizeof(code_units) - 1};
-	assert_code_points(code_points, sizeof(code_points) / sizeof(int), it);
+	assert_code_points(
+	    std::initializer_list{0x004D, 0x0430, 0x4E8C, 0x10302},
+	    u8"\x4D\xD0\xB0\xE4\xBA\x8C\xF0\x90\x8C\x82"sv);
 }
 
 /** The byte sequence <C0 AF> is ill-formed, because C0 is not well-formed in
@@ -72,10 +65,7 @@ void well_formed_D92_01()
  */
 void ill_formed_first_byte()
 {
-	const int code_points[] = {-3, -3};
-	const char8_t code_units[] = u8"\xC0\xAF";
-	struct utf8_iter it = {code_units, code_units + sizeof(code_units) - 1};
-	assert_code_points(code_points, sizeof(code_points) / sizeof(int), it);
+	assert_code_points(std::initializer_list{-3, -3}, u8"\xC0\xAF"sv);
 }
 
 /** The byte sequence <E0 9F 80> is ill-formed, because in the row where E0 is
@@ -83,10 +73,7 @@ void ill_formed_first_byte()
  */
 void ill_formed_second_byte()
 {
-	const int code_points[] = {-3, -3};
-	const char8_t code_units[] = u8"\xE0\x9F\x80";
-	struct utf8_iter it = {code_units, code_units + sizeof(code_units) - 1};
-	assert_code_points(code_points, sizeof(code_points) / sizeof(int), it);
+	assert_code_points(std::initializer_list{-3, -3}, u8"\xE0\x9F\x80"sv);
 }
 
 /** The byte sequence <F4 80 83 92> is well-formed, because every byte in that
@@ -94,10 +81,8 @@ void ill_formed_second_byte()
  */
 void well_formed_four_bytes()
 {
-	const int code_points[] = {0x1000D2};
-	const char8_t code_units[] = u8"\xF4\x80\x83\x92";
-	struct utf8_iter it = {code_units, code_units + sizeof(code_units) - 1};
-	assert_code_points(code_points, sizeof(code_points) / sizeof(int), it);
+	assert_code_points(std::initializer_list{0x1000D2},
+			   u8"\xF4\x80\x83\x92"sv);
 }
 
 void disallowed_byte_range(char8_t first_code_unit, char8_t last_code_unit)
