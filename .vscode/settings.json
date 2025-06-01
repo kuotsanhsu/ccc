@@ -4,8 +4,24 @@
         ".clangd": "yaml",
         "*.h": "c"
     },
-    "[c][yaml]": {
-        "editor.formatOnSave": true
+    "[c]": {
+        "editor.formatOnSave": true,
+        "editor.insertSpaces": false,
+        "editor.tabSize": 8,
+        "editor.detectIndentation": false
+    },
+    "[yaml]": {
+        "editor.formatOnSave": true,
+        "editor.insertSpaces": true,
+        "editor.tabSize": 2,
+        "editor.autoIndent": "keep",
+        "diffEditor.ignoreTrimWhitespace": false,
+        "editor.defaultColorDecorators": "never",
+        "editor.quickSuggestions": {
+            "other": true,
+            "comments": false,
+            "strings": true
+        }
     },
     "yaml.schemas": {
         "https://json.schemastore.org/clang-format.json": ".clang-format",
