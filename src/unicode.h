@@ -2,7 +2,13 @@
 #if __SIZEOF_INT__ != 4
 #error "size of int MUST be 4"
 #endif
-#if __STDC_VERSION__ >= 202311L
+
+#ifdef __cplusplus
+extern "C" {
+#ifndef __cpp_char8_t
+typedef unsigned char char8_t;
+#endif
+#elif __STDC_VERSION__ >= 202311L
 #include <uchar.h>
 #else
 typedef unsigned char char8_t;
@@ -37,3 +43,7 @@ struct utf8_iter {
  * Postcondition: `it->pos <= it->end`.
  */
 int utf8_getc(struct utf8_iter *it);
+
+#ifdef __cplusplus
+}
+#endif

@@ -10,6 +10,12 @@
         "editor.tabSize": 8,
         "editor.detectIndentation": false
     },
+    "[cpp]": {
+        "editor.formatOnSave": true,
+        "editor.insertSpaces": false,
+        "editor.tabSize": 4,
+        "editor.detectIndentation": false
+    },
     "[yaml]": {
         "editor.formatOnSave": true,
         "editor.insertSpaces": true,
@@ -26,5 +32,12 @@
     "yaml.schemas": {
         "https://json.schemastore.org/clang-format.json": ".clang-format",
         "https://json.schemastore.org/clangd.json": ".clangd"
-    }
+    },
+    "clangd.arguments": [
+        "--compile-commands-dir=${workspaceFolder}"
+    ],
+    "clangd.fallbackFlags": [
+        "-xc++"
+    ],
+    "makefile.compileCommandsPath": "${workspaceFolder}/compile_commands.json"
 }

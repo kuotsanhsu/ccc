@@ -1,20 +1,25 @@
 .DEFAULT_GOAL := all
 .SUFFIXES:
-.SUFFIXES: .c .o
+.SUFFIXES: .c .cc .o
 
-srcs := $(wildcard *.c)
-objs := $(srcs:.c=.o)
-deps := $(srcs:.c=.d)
+c_srcs := $(wildcard *.c)
+cc_srcs := $(wildcard *.cc)
+objs := $(c_srcs:.c=.o) $(cc_srcs:.cc=.o)
+deps := $(objs:.o=.d)
 -include $(deps)
-CFLAGS += -MMD -MP
+CFLAGS += -MMD -MP -std=c17
+CXXFLAGS += -MMD -MP -std=c++20
 
-.PHONY: all test
+execs := $(addprefix exec_,$(filter test_%,$(objs:.o=)))
+.PHONY: all test $(execs)
 all: $(objs)
-test: $(patsubst %.c,exec_%,$(wildcard test_*.c))
-exec_%: %
+test: $(execs)
+$(execs): exec_%: %
 	exec ./$<
 test_unicode: test_unicode.o unicode.o
-	$(CC) $(LDFLAGS) $(TARGET_ARCH) $^ $(LOADLIBES) $(LDLIBS) -o $@
+	$(CC) $(CFLAGS) $(CPPFLAGS) $(LDFLAGS) $(TARGET_ARCH) $^ $(LOADLIBES) $(LDLIBS) -o $@
+test_unicode_more: test_unicode_more.o unicode.o
+	$(CXX) $(CXXFLAGS) $(CPPFLAGS) $(LDFLAGS) $(TARGET_ARCH) $^ $(LOADLIBES) $(LDLIBS) -o $@
 
 .PHONY: clean cleanall
 clean:
