@@ -2,6 +2,15 @@
 #include <assert.h>
 #include <stddef.h>
 
+void assert_code_points(const int *code_points, size_t n_code_points,
+			struct utf8_iter it)
+{
+	for (size_t i = 0; i != n_code_points; ++i) {
+		assert(utf8_getc(&it) == code_points[i]);
+	}
+	assert(utf8_getc(&it) == -1);
+}
+
 /** The UTF-8 code unit sequence <41 C3 B1 42> is well-formed, because it can be
  * partitioned into subsequences, all of which match the specification for UTF-8
  * in Table 3-7. It consists of the following minimal well-formed code unit
@@ -12,11 +21,7 @@ void well_formed_D86_01()
 	const int code_points[] = {0x41, 0xF1, 0x42};
 	const char8_t code_units[] = u8"\x41\xC3\xB1\x42";
 	struct utf8_iter it = {code_units, code_units + sizeof(code_units) - 1};
-	const size_t n = sizeof(code_points) / sizeof(int);
-	for (size_t i = 0; i != n; ++i) {
-		assert(utf8_getc(&it) == code_points[i]);
-	}
-	assert(utf8_getc(&it) == -1);
+	assert_code_points(code_points, sizeof(code_points) / sizeof(int), it);
 }
 
 /** The UTF-8 code unit sequence <41 C2 C3 B1 42> is ill-formed, because it
@@ -31,11 +36,7 @@ void ill_formed_D86_02()
 	const int code_points[] = {0x41, -3, 0xF1, 0x42};
 	const char8_t code_units[] = u8"\x41\xC2\xC3\xB1\x42";
 	struct utf8_iter it = {code_units, code_units + sizeof(code_units) - 1};
-	const size_t n = sizeof(code_points) / sizeof(int);
-	for (size_t i = 0; i != n; ++i) {
-		assert(utf8_getc(&it) == code_points[i]);
-	}
-	assert(utf8_getc(&it) == -1);
+	assert_code_points(code_points, sizeof(code_points) / sizeof(int), it);
 }
 
 /** In isolation, the UTF-8 code unit sequence <C2 C3> would be ill-formed, but
@@ -46,14 +47,10 @@ void ill_formed_D86_02()
  * minimal well-formed code unit subsequences. */
 void ill_formed_D86_03()
 {
-	const int code_points[] = {-3};
+	const int code_points[] = {-3, -2};
 	const char8_t code_units[] = u8"\xC2\xC3";
 	struct utf8_iter it = {code_units, code_units + sizeof(code_units) - 1};
-	const size_t n = sizeof(code_points) / sizeof(int);
-	for (size_t i = 0; i != n; ++i) {
-		assert(utf8_getc(&it) == code_points[i]);
-	}
-	assert(utf8_getc(&it) == -2);
+	assert_code_points(code_points, sizeof(code_points) / sizeof(int), it);
 }
 
 /* In UTF-8, the code point sequence <004D, 0430, 4E8C, 10302> is represented as
@@ -67,11 +64,7 @@ void well_formed_D92_01()
 	const char8_t code_units[] =
 	    u8"\x4D\xD0\xB0\xE4\xBA\x8C\xF0\x90\x8C\x82";
 	struct utf8_iter it = {code_units, code_units + sizeof(code_units) - 1};
-	const size_t n = sizeof(code_points) / sizeof(int);
-	for (size_t i = 0; i != n; ++i) {
-		assert(utf8_getc(&it) == code_points[i]);
-	}
-	assert(utf8_getc(&it) == -1);
+	assert_code_points(code_points, sizeof(code_points) / sizeof(int), it);
 }
 
 /** The byte sequence <C0 AF> is ill-formed, because C0 is not well-formed in
@@ -79,10 +72,10 @@ void well_formed_D92_01()
  */
 void ill_formed_first_byte()
 {
+	const int code_points[] = {-3, -3};
 	const char8_t code_units[] = u8"\xC0\xAF";
 	struct utf8_iter it = {code_units, code_units + sizeof(code_units) - 1};
-	assert(utf8_getc(&it) == -3);
-	assert(it.pos == code_units + 1);
+	assert_code_points(code_points, sizeof(code_points) / sizeof(int), it);
 }
 
 /** The byte sequence <E0 9F 80> is ill-formed, because in the row where E0 is
@@ -90,10 +83,10 @@ void ill_formed_first_byte()
  */
 void ill_formed_second_byte()
 {
+	const int code_points[] = {-3, -3};
 	const char8_t code_units[] = u8"\xE0\x9F\x80";
 	struct utf8_iter it = {code_units, code_units + sizeof(code_units) - 1};
-	assert(utf8_getc(&it) == -3);
-	assert(it.pos == code_units + 2);
+	assert_code_points(code_points, sizeof(code_points) / sizeof(int), it);
 }
 
 /** The byte sequence <F4 80 83 92> is well-formed, because every byte in that
@@ -101,11 +94,10 @@ void ill_formed_second_byte()
  */
 void well_formed_four_bytes()
 {
+	const int code_points[] = {0x1000D2};
 	const char8_t code_units[] = u8"\xF4\x80\x83\x92";
 	struct utf8_iter it = {code_units, code_units + sizeof(code_units) - 1};
-	assert(utf8_getc(&it) == 0x1000D2);
-	assert(it.pos == code_units + 4);
-	assert(utf8_getc(&it) == -1);
+	assert_code_points(code_points, sizeof(code_points) / sizeof(int), it);
 }
 
 void disallowed_byte_range(char8_t first_code_unit, char8_t last_code_unit)
