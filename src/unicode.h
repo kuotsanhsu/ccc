@@ -20,12 +20,20 @@ struct utf8_iter {
  * code point from the buffer. Returns a code point at most U+10FFFF upon
  * success.
  *
- * Returns -1 if the buffer is empty, i.e. EOF. `pos == end`.
+ * Returns -1 if the buffer is empty, i.e. EOF. Further calls to this function
+ * with the same argument is safe and will always return -1.
+ * Postcondition: `it->pos == it->end`.
  *
  * Returns -2 if EOF is reached prematurely, i.e. expects more code units; never
- * happens to ASCII. `pos == end`.
+ * happens to ASCII. NOTE: further calls to this function with the same argument
+ * will always return -1 thereby hiding the fact that the EOF is premature.
+ * Postcondition: `it->pos == it->end`.
  *
  * Returns -3 if an invalid code unit is encountered before reaching EOF, and
- * `pos` will stop incrementing at this point. `pos < end`.
+ * `it->pos` will point at the immediate next code unit. NOTE: further calls to
+ * this function with the same argument will start parsing a new code point
+ * starting at the code unit immediately after the encountered invalid code unit
+ * thereby hiding the fact that the UTF-8 string is ill-formed.
+ * Postcondition: `it->pos <= it->end`.
  */
 int utf8_getc(struct utf8_iter *it);
