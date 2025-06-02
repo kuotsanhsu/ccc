@@ -1,15 +1,19 @@
 #include "unicode.h"
 #include <cassert>
+#include <ranges>
 #include <string_view>
 
-void disallowed_byte_range(char8_t first_code_unit, char8_t last_code_unit)
+#ifdef assert
+#undef assert
+#define assert(e) (__builtin_expect(!(e), 0) ? __builtin_trap() : (void)0)
+#endif
+
+void disallowed_byte_range(std::ranges::range auto &&code_units)
 {
-	assert(first_code_unit <= last_code_unit);
-	char8_t code_unit = first_code_unit;
-	const char8_t *const begin = &code_unit;
-	const char8_t *const end = begin + 1;
-	for (; code_unit != last_code_unit; ++code_unit) {
-		struct utf8_iter it = {begin, end};
+	for (const char8_t code_unit : code_units) {
+		const auto begin = &code_unit;
+		const auto end = std::next(begin);
+		utf8_iter it{begin, end};
 		assert(utf8_getc(&it) == -3);
 		assert(it.pos == end);
 	}
@@ -21,14 +25,9 @@ void disallowed_byte_range(char8_t first_code_unit, char8_t last_code_unit)
  */
 void disallowed_byte_values()
 {
-	disallowed_byte_range(0xC0, 0xC1);
-	disallowed_byte_range(0xF5, 0xFF);
+	disallowed_byte_range(std::ranges::iota_view(0xC0, 0xC2));
+	disallowed_byte_range(std::ranges::iota_view(0xF5, 0x100));
 }
-
-#ifdef assert
-#undef assert
-#define assert(e) (__builtin_expect(!(e), 0) ? __builtin_trap() : (void)0)
-#endif
 
 int main()
 {
@@ -52,7 +51,7 @@ int main()
 		  {0x65E5, 0x672C, 0x8A9E}},
 		 {u8"\xEF\xBB\xBF\xF0\xA3\x8E\xB4", {0xFEFF, 0x233B4}},
 	     }) {
-		struct utf8_iter it = {code_units.begin(), code_units.end()};
+		utf8_iter it{code_units.begin(), code_units.end()};
 		for (const int code_point : code_points) {
 			assert(utf8_getc(&it) == code_point);
 		}
