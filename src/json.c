@@ -92,6 +92,59 @@ static int lex_string(struct utf8_iter *source)
 	}
 }
 
+static int lex_number_more_than_1_digit(struct utf8_iter *source, int c)
+{
+	if (c < 0)
+		return c;
+	if (c < '0' || '9' < c)
+		return -4; // FIXME: another error code
+	do {
+		c = utf8_getc(source);
+	} while ('0' <= c && c <= '9');
+	return c;
+}
+
+static int lex_number_frac_exp(struct utf8_iter *source, int c)
+{
+	if (c == '.') {
+		c = lex_number_more_than_1_digit(source, utf8_getc(source));
+	}
+	switch (c) {
+	case 'e':
+	case 'E':
+		c = utf8_getc(source);
+		switch (c) { // optional minus/plus
+		case '-':
+		case '+':
+			c = utf8_getc(source);
+		}
+		c = lex_number_more_than_1_digit(source, c);
+	}
+	return c;
+}
+
+static int lex_number_after_first_digit(struct utf8_iter *source)
+{
+	// First, match any number (including 0) of digits.
+	int c = utf8_getc(source);
+	while ('0' <= c && c <= '9') {
+		c = utf8_getc(source);
+	}
+	return lex_number_frac_exp(source, c);
+}
+
+static int lex_number_int_frac_exp(struct utf8_iter *source)
+{
+	const int c = utf8_getc(source);
+	if (c < 0)
+		return c;
+	if ('1' <= c && c <= '9')
+		return lex_number_after_first_digit(source);
+	if (c == '0')
+		return lex_number_frac_exp(source, utf8_getc(source));
+	return -4; // FIXME: another error code
+}
+
 static int parse_value(struct utf8_iter *source, int c);
 
 static int parse_array(struct utf8_iter *source)
@@ -165,7 +218,13 @@ static int parse_value(struct utf8_iter *source, int c)
 	c = skip_whitespace(source, c);
 	if (c < 0)
 		return c;
+	if ('1' <= c && c <= '9')
+		return lex_number_after_first_digit(source);
 	switch (c) {
+	case '0':
+		return lex_number_frac_exp(source, utf8_getc(source));
+	case '-':
+		return lex_number_int_frac_exp(source);
 	case 'f':
 		return lex_literal(source, u8"alse", 4);
 	case 'n':
