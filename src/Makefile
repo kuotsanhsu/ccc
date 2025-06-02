@@ -7,8 +7,8 @@ cc_srcs := $(wildcard *.cc)
 objs := $(c_srcs:.c=.o) $(cc_srcs:.cc=.o)
 deps := $(objs:.o=.d)
 -include $(deps)
-CFLAGS += -MMD -MP -std=c17
-CXXFLAGS += -MMD -MP -std=c++20
+CFLAGS += -MMD -MP -std=c23
+CXXFLAGS += -MMD -MP -std=c++23
 
 execs := $(addprefix exec_,$(filter test_%,$(objs:.o=)))
 .PHONY: all test $(execs)

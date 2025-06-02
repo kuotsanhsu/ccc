@@ -8,7 +8,7 @@ extern "C" {
 #ifndef __cpp_char8_t
 typedef unsigned char char8_t;
 #endif
-#elif __STDC_VERSION__ >= 202311L
+#elif __has_include(<uchar.h>)
 #include <uchar.h>
 #else
 typedef unsigned char char8_t;
