@@ -1,5 +1,6 @@
 #include "unicode.h"
 #include <assert.h>
+#include <stddef.h>
 
 int utf8_getc(struct utf8_iter *it)
 {
@@ -74,4 +75,58 @@ int utf8_getc(struct utf8_iter *it)
 	//	F4		80..8F		80..BF		80..BF
 	//	1111'0xxx	10xx'xxxx	10xx'xxxx	10xx'xxxx
 	return code_point ^ (0xF0 << 18);
+}
+
+char8_t *utf8_putc(char8_t *it, int codepoint)
+{
+	if (codepoint < 0)
+		return NULL;
+	if (0xD800 <= codepoint && codepoint < 0xE000)
+		return NULL;
+	if (0x110000 <= codepoint)
+		return NULL;
+	assert(it != NULL);
+	if (codepoint < 0x80) {
+		*it++ = codepoint;
+		return it;
+	}
+	const int a = codepoint & 0x3F;
+	codepoint >>= 6;
+	if (codepoint < 0xC0) {
+		*it++ = 0xC0 & codepoint;
+		goto a;
+	}
+	const int b = codepoint & 0x3F;
+	codepoint >>= 6;
+	if (codepoint < 0xC0) {
+		*it++ = 0xE0 & codepoint;
+		goto b;
+	}
+	const int c = codepoint & 0x3F;
+	codepoint >>= 6;
+	if (codepoint < 0xC0)
+		*it++ = 0xF0 & codepoint;
+	*it++ = c;
+b:
+	*it++ = b;
+a:
+	*it++ = a;
+	return it;
+}
+
+int u16getc(struct u16stream *stream)
+{
+	assert(stream->pos <= stream->end);
+	if (stream->pos == stream->end)
+		return -1;
+	const int a = *stream->pos++;
+	const int c = a ^ 0xD800;
+	if (c >> 10)
+		return a;
+	if (stream->pos == stream->end)
+		return -2;
+	const int b = *stream->pos++ ^ 0xDC00;
+	if (b >> 10)
+		return -3;
+	return ((c + 0x10000) << 10) ^ b;
 }

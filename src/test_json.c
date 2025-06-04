@@ -6,46 +6,51 @@
 
 void literal_false()
 {
-	const char8_t code_units[] = u8"false";
+	char8_t code_units[] = u8"false";
 	struct utf8_iter source = {code_units,
 				   code_units + sizeof(code_units) - 1};
-	const int c = json_parse(&source);
+	struct json json = {code_units};
+	const int c = json_parse(&json, &source);
 	assert(c == -1);
 }
 
 void literal_null()
 {
-	const char8_t code_units[] = u8"null";
+	char8_t code_units[] = u8"null";
 	struct utf8_iter source = {code_units,
 				   code_units + sizeof(code_units) - 1};
-	const int c = json_parse(&source);
+	struct json json = {code_units};
+	const int c = json_parse(&json, &source);
 	assert(c == -1);
 }
 
 void literal_true()
 {
-	const char8_t code_units[] = u8"true";
+	char8_t code_units[] = u8"true";
 	struct utf8_iter source = {code_units,
 				   code_units + sizeof(code_units) - 1};
-	const int c = json_parse(&source);
+	struct json json = {code_units};
+	const int c = json_parse(&json, &source);
 	assert(c == -1);
 }
 
 void string_hello_world()
 {
-	const char8_t code_units[] = u8"\"Hello world!\"";
+	char8_t code_units[] = u8"\"Hello world!\"";
 	struct utf8_iter source = {code_units,
 				   code_units + sizeof(code_units) - 1};
-	const int c = json_parse(&source);
+	struct json json = {code_units};
+	const int c = json_parse(&json, &source);
 	assert(c == -1);
 }
 
 void number_42()
 {
-	const char8_t code_units[] = u8"42";
+	char8_t code_units[] = u8"42";
 	struct utf8_iter source = {code_units,
 				   code_units + sizeof(code_units) - 1};
-	const int c = json_parse(&source);
+	struct json json = {code_units};
+	const int c = json_parse(&json, &source);
 	assert(c == -1);
 }
 
@@ -72,7 +77,8 @@ int read_json(FILE *stream)
 		return -1;
 	}
 	struct utf8_iter source = {buf, buf + file_size};
-	const int c = json_parse(&source);
+	struct json json = {buf};
+	const int c = json_parse(&json, &source);
 	assert(c == -1);
 	free(buf);
 	return 0;

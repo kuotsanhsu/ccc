@@ -4,14 +4,16 @@
 #endif
 
 #ifdef __cplusplus
-extern "C" {
 #ifndef __cpp_char8_t
-typedef unsigned char char8_t;
+using char8_t = unsigned char;
 #endif
+extern "C" {
 #elif __has_include(<uchar.h>)
 #include <uchar.h>
 #else
+#include <stdint.h>
 typedef unsigned char char8_t;
+typedef uint_least16_t char16_t;
 #endif
 
 struct utf8_iter {
@@ -19,6 +21,13 @@ struct utf8_iter {
 	const char8_t *pos;
 	/** MUST NOT derefence `end`. */
 	const char8_t *const end;
+};
+
+struct u16stream {
+	/** `pos <= end`. */
+	const char16_t *pos;
+	/** MUST NOT derefence `end`. */
+	const char16_t *const end;
 };
 
 /** Gets a
@@ -43,6 +52,11 @@ struct utf8_iter {
  * Postcondition: `it->pos <= it->end`.
  */
 int utf8_getc(struct utf8_iter *it);
+
+/** FIXME: unsafe */
+char8_t *utf8_putc(char8_t *it, int codepoint);
+
+int u16getc(struct u16stream *stream);
 
 #ifdef __cplusplus
 }
