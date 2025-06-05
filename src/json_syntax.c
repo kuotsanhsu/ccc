@@ -7,6 +7,20 @@ struct codepoint_stream;
 int get_codepoint(struct codepoint_stream *);
 struct codepoint_stream *utf8_stream(const char8_t *, size_t);
 
+enum json_error {
+	JSON_ERR_lex_value = -10,
+	JSON_ERR_lex_literal = -11,
+	JSON_ERR_lex_object_member = -12,
+	JSON_ERR_lex_object_name_separator = -13,
+	JSON_ERR_lex_end_object_or_value_separator = -14,
+	JSON_ERR_lex_end_array_or_value_separator = -15,
+	JSON_ERR_lex_xdigit = -16,
+	JSON_ERR_lex_digit = -17,
+	JSON_ERR_lex_number = -18,
+	JSON_ERR_lex_escape = -19,
+	JSON_ERR_lex_string = -20,
+};
+
 static int lex_whitespace(struct codepoint_stream *source, int c)
 {
 	for (;; c = get_codepoint(source)) {
@@ -32,7 +46,7 @@ static int lex_literal(struct codepoint_stream *source,
 		if (d == -1 || c < 0)
 			return c;
 		if (c != d)
-			return -5; // FIXME: another error code
+			return JSON_ERR_lex_literal;
 	}
 }
 
@@ -52,7 +66,7 @@ static int lex_4_xdigits(struct codepoint_stream *source)
 			return c;
 		if (isxdigit(c))
 			continue;
-		return -4; // FIXME: another error code
+		return JSON_ERR_lex_xdigit;
 	}
 	return 0;
 }
@@ -87,7 +101,7 @@ static int lex_string(struct codepoint_stream *source)
 				break;
 			}
 			default:
-				return -4; // FIXME: another error code
+				return JSON_ERR_lex_escape;
 			}
 			break;
 		}
@@ -95,7 +109,7 @@ static int lex_string(struct codepoint_stream *source)
 			// Control characters (U+0000 through U+001F) MUST be
 			// escaped.
 			if (c < 0x20)
-				return -4; // FIXME: another error code
+				return JSON_ERR_lex_string;
 			// Quotation mark (U+22) WILL NOT appear here.
 			assert(c != 0x22);
 			// Reverse solidus (U+5C) WILL NOT appear here.
@@ -111,7 +125,7 @@ static int lex_1_or_more_digits(struct codepoint_stream *source, int c)
 	if (c < 0)
 		return c;
 	if (!isdigit(c))
-		return -4; // FIXME: another error code
+		return JSON_ERR_lex_digit;
 	do {
 		c = get_codepoint(source);
 	} while (isdigit(c));
@@ -154,7 +168,7 @@ static int lex_number_int_frac_exp(struct codepoint_stream *source)
 		return lex_number_after_first_digit(source);
 	if (c == '0')
 		return lex_number_frac_exp(source, get_codepoint(source));
-	return -4; // FIXME: another error code
+	return JSON_ERR_lex_escape;
 }
 
 static int lex_value(struct codepoint_stream *source, int c);
@@ -175,7 +189,7 @@ static int lex_array(struct codepoint_stream *source)
 			c = get_codepoint(source);
 			break;
 		default:
-			return -4; // FIXME: another error code
+			return JSON_ERR_lex_end_array_or_value_separator;
 		}
 	}
 }
@@ -191,7 +205,7 @@ static int lex_object(struct codepoint_stream *source)
 			c = lex_string(source);
 			break;
 		default:
-			return -4; // FIXME: another error code
+			return JSON_ERR_lex_object_member;
 		}
 
 		c = lex_whitespace(source, c);
@@ -202,7 +216,7 @@ static int lex_object(struct codepoint_stream *source)
 			c = get_codepoint(source);
 			break;
 		default:
-			return -4; // FIXME: another error code
+			return JSON_ERR_lex_object_name_separator;
 		}
 
 		c = lex_value(source, c);
@@ -219,7 +233,7 @@ static int lex_object(struct codepoint_stream *source)
 			c = get_codepoint(source);
 			break;
 		default:
-			return -4; // FIXME: another error code
+			return JSON_ERR_lex_end_object_or_value_separator;
 		}
 	}
 }
@@ -249,11 +263,13 @@ static int lex_value(struct codepoint_stream *source, int c)
 	case '{':
 		return lex_object(source);
 	}
-	return -4; // FIXME: another error code
+	return JSON_ERR_lex_value;
 }
 
 static int lex_json_text(struct codepoint_stream *source)
 {
-	// FIXME: BOM?
-	return lex_whitespace(source, lex_value(source, get_codepoint(source)));
+	int c = get_codepoint(source);
+	if (c == 0xFEFF) // Skip BOM.
+		c = get_codepoint(source);
+	return lex_whitespace(source, lex_value(source, c));
 }
