@@ -56,6 +56,18 @@ int utf8_getc(struct utf8_iter *it);
 /** FIXME: unsafe */
 char8_t *utf8_putc(char8_t *it, int codepoint);
 
+/** Decode the high code unit or the only code unit of a UTF-16 code point.
+ *
+ * Returns 0 if code_unit is itself a valid UTF-16 code point.
+ *
+ * Returns non-zero if a low code unit is to be expected. In this case, the
+ * return value can be XORed with the return value of u16low.
+ */
+int u16high(char16_t code_unit);
+
+// FIXME: bad name? don't pass in high?
+int u16low(int high, char16_t code_unit);
+
 int u16getc(struct u16stream *stream);
 
 #ifdef __cplusplus

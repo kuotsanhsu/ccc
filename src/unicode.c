@@ -114,19 +114,33 @@ a:
 	return it;
 }
 
+int u16high(char16_t code_unit)
+{
+	const int c = code_unit ^ 0xD800;
+	if (c >> 10)
+		return 0;
+	return (c + 0x10000) << 10;
+}
+
+int u16low(int high, char16_t code_unit)
+{
+	assert(0x10000 <= high && high < 0x110000);
+	const int low = code_unit ^ 0xDC00;
+	if (low >> 10)
+		return -3;
+	return high ^ low;
+}
+
 int u16getc(struct u16stream *stream)
 {
 	assert(stream->pos <= stream->end);
 	if (stream->pos == stream->end)
 		return -1;
 	const int a = *stream->pos++;
-	const int c = a ^ 0xD800;
-	if (c >> 10)
+	const int high = u16high(a);
+	if (!high)
 		return a;
 	if (stream->pos == stream->end)
 		return -2;
-	const int b = *stream->pos++ ^ 0xDC00;
-	if (b >> 10)
-		return -3;
-	return ((c + 0x10000) << 10) ^ b;
+	return u16low(high, *stream->pos++);
 }

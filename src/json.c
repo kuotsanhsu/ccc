@@ -1,4 +1,5 @@
 #include "json.h"
+#include "unicode.h"
 #include <assert.h>
 #include <stddef.h>
 
@@ -43,6 +44,35 @@ static int lex_literal(struct utf8_iter *source, const char8_t *literal,
 	}
 }
 
+/**
+ * Returns -4 if a consecutive sequence of 4 hex digits cannot be parsed.
+ *
+ * Returns -3..-1 if utf8_getc reports error. The return value is
+ * exactly the error value returned by utf8_getc.
+ *
+ * Returns a non-negative number that is the UTF-16 code unit that the 4 hex
+ * digits represents.
+ */
+static int parse_4_hex(struct utf8_iter *source)
+{
+	char16_t code_unit = 0;
+	for (int i = 0; i != 4; ++i) {
+		int c = utf8_getc(source);
+		if (c < 0)
+			return c;
+		if ('0' <= c && c <= '9')
+			c -= '0';
+		else if ('a' <= c && c <= 'f')
+			c = c - 'a' + 10;
+		else if ('A' <= c && c <= 'F')
+			c = c - 'A' + 10;
+		else
+			return -4; // FIXME: another error code
+		code_unit = (code_unit << 4) ^ c;
+	}
+	return code_unit;
+}
+
 static int lex_string(struct json *json, struct utf8_iter *source)
 {
 	*json->pos++ = JSON_begin_string;
@@ -80,23 +110,26 @@ static int lex_string(struct json *json, struct utf8_iter *source)
 				*json->pos++ = '\t';
 				break;
 			case 'u': {
-				char16_t code_unit = 0;
-				for (int i = 0; i != 4; ++i) {
-					int c = utf8_getc(source);
-					if (c < 0)
-						return c;
-					if ('0' <= c && c <= '9')
-						c -= '0';
-					else if ('a' <= c && c <= 'f')
-						c = c - 'a' + 10;
-					else if ('A' <= c && c <= 'F')
-						c = c - 'A' + 10;
-					else
-						return -4; // FIXME: another
-							   // error code
-					code_unit = (code_unit << 4) ^ c;
-				}
-				// TODO: convert `code_unit` to UTF-8
+				const int code_unit = parse_4_hex(source);
+				if (code_unit < 0)
+					return code_unit;
+				assert(code_unit < 0x10000);
+				const int high = u16high(code_unit);
+				int codepoint;
+				if (high) {
+					lex_literal(source, u8"\\u", 2);
+					const int code_unit =
+					    parse_4_hex(source);
+					if (code_unit < 0)
+						return code_unit;
+					assert(code_unit < 0x10000);
+					codepoint = u16low(high, code_unit);
+					// FIXME: another error code
+					if (codepoint < 0)
+						return codepoint - 10;
+				} else
+					codepoint = code_unit;
+				json->pos = utf8_putc(json->pos, codepoint);
 				break;
 			}
 			default:
