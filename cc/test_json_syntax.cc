@@ -1,48 +1,47 @@
+#include <cassert>
 #include <iterator>
+#include <ranges>
 #include <string>
 #include <string_view>
 
-template <std::input_iterator I, std::sentinel_for<I> S = I>
-  requires std::same_as<std::iter_value_t<I>, char8_t>
+template <std::ranges::input_range R>
+  requires std::same_as<std::ranges::range_value_t<R>, char8_t>
 class u8iterator {
-  I curr;
-  I end;
+  std::ranges::iterator_t<R> curr;
+  std::ranges::sentinel_t<R> end;
   int codepoint;
   constexpr int next() noexcept;
 
 public:
   using difference_type = std::ptrdiff_t;
   using value_type = int;
-  constexpr u8iterator(I begin, S end) noexcept;
+  constexpr u8iterator(const R &r) noexcept;
   constexpr int operator*() const;
   constexpr u8iterator &operator++();
-  constexpr void operator++(int) { ++*this; }
+  constexpr u8iterator operator++(int);
 };
 
-static_assert(std::input_iterator<u8iterator<std::u8string::iterator>>);
-static_assert(std::input_iterator<u8iterator<std::u8string_view::const_iterator>>);
-static_assert(std::input_iterator<u8iterator<char8_t *>>);
-static_assert(std::input_iterator<u8iterator<const char8_t *>>);
-static_assert(std::input_iterator<u8iterator<std::istream_iterator<char8_t>>>);
+static_assert(std::input_iterator<u8iterator<std::u8string>>);
+static_assert(std::input_iterator<u8iterator<std::u8string_view>>);
 
-template <std::input_iterator I, std::sentinel_for<I> S>
-  requires std::same_as<std::iter_value_t<I>, char8_t>
-constexpr u8iterator<I, S>::u8iterator(I begin, S end) noexcept : curr(begin), end(end) {
+template <std::ranges::input_range R>
+  requires std::same_as<std::ranges::range_value_t<R>, char8_t>
+constexpr u8iterator<R>::u8iterator(const R &r) noexcept : curr(std::begin(r)), end(std::end(r)) {
   codepoint = next();
 }
 
-template <std::input_iterator I, std::sentinel_for<I> S>
-  requires std::same_as<std::iter_value_t<I>, char8_t>
-constexpr int u8iterator<I, S>::operator*() const {
+template <std::ranges::input_range R>
+  requires std::same_as<std::ranges::range_value_t<R>, char8_t>
+constexpr int u8iterator<R>::operator*() const {
   if (codepoint < 0) {
     throw codepoint;
   }
   return codepoint;
 }
 
-template <std::input_iterator I, std::sentinel_for<I> S>
-  requires std::same_as<std::iter_value_t<I>, char8_t>
-constexpr u8iterator<I, S> &u8iterator<I, S>::operator++() {
+template <std::ranges::input_range R>
+  requires std::same_as<std::ranges::range_value_t<R>, char8_t>
+constexpr u8iterator<R> &u8iterator<R>::operator++() {
   if (codepoint < 0) {
     throw codepoint;
   }
@@ -50,9 +49,17 @@ constexpr u8iterator<I, S> &u8iterator<I, S>::operator++() {
   return *this;
 }
 
-template <std::input_iterator I, std::sentinel_for<I> S>
-  requires std::same_as<std::iter_value_t<I>, char8_t>
-constexpr int u8iterator<I, S>::next() noexcept {
+template <std::ranges::input_range R>
+  requires std::same_as<std::ranges::range_value_t<R>, char8_t>
+constexpr u8iterator<R> u8iterator<R>::operator++(int) {
+  auto old = *this;
+  ++*this;
+  return old;
+}
+
+template <std::ranges::input_range R>
+  requires std::same_as<std::ranges::range_value_t<R>, char8_t>
+constexpr int u8iterator<R>::next() noexcept {
   if (curr == end)
     return -2;
   const int a = *curr++;
@@ -125,18 +132,19 @@ constexpr int u8iterator<I, S>::next() noexcept {
   return code_point ^ (0xF0 << 18);
 }
 
-template <typename I, typename S> consteval u8iterator<I, S> next(u8iterator<I, S> it) {
-  return ++it;
-}
+template <typename R> consteval u8iterator<R> next(u8iterator<R> it) { return ++it; }
 
 int main() {
-  constexpr std::u8string_view hello = u8"hello";
-  constexpr u8iterator h(hello.begin(), hello.end());
+  constexpr std::u8string_view hello = u8"hello world";
+  constexpr u8iterator h(hello);
   static_assert(*h == 'h');
   constexpr auto e = next(h);
   static_assert(*e == 'e');
   constexpr auto l = next(e);
   static_assert(*l == 'l');
   constexpr auto o = next(next(l));
-  static_assert(*o == 'o');
+  using namespace std::string_view_literals;
+  for (auto it = o; const auto c : u8"o world"sv) {
+    assert(*it++ == c);
+  }
 }
