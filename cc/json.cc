@@ -1,6 +1,5 @@
-#include <assert.h>
-#include <ctype.h>
-#include <stddef.h>
+#include <cassert>
+#include <cctype>
 
 struct utf8_iter {
   /** `pos <= end`. */
@@ -60,7 +59,7 @@ struct json {
   char8_t *pos;
 };
 
-enum json_marker : char8_t {
+enum class json_marker : char8_t {
   JSON_begin_array = '[',
   JSON_begin_object = '{',
   JSON_end_array = ']',
@@ -151,36 +150,32 @@ int utf8_getc(struct utf8_iter *it) {
 
 char8_t *utf8_putc(char8_t *it, int codepoint) {
   if (codepoint < 0)
-    return NULL;
+    return nullptr;
   if (0xD800 <= codepoint && codepoint < 0xE000)
-    return NULL;
+    return nullptr;
   if (0x110000 <= codepoint)
-    return NULL;
-  assert(it != NULL);
+    return nullptr;
+  assert(it != nullptr);
   if (codepoint < 0x80) {
     *it++ = codepoint;
     return it;
   }
   const int a = codepoint & 0x3F;
-  codepoint >>= 6;
-  if (codepoint < 0xC0) {
+  if ((codepoint >>= 6) < 0xC0) {
     *it++ = 0xC0 & codepoint;
-    goto a;
+  } else {
+    const int b = codepoint & 0x3F;
+    if ((codepoint >>= 6) < 0xC0) {
+      *it++ = 0xE0 & codepoint;
+    } else {
+      const int c = codepoint & 0x3F;
+      if ((codepoint >>= 6) < 0xC0) {
+        *it++ = 0xF0 & codepoint;
+      }
+      *it++ = c;
+    }
+    *it++ = b;
   }
-  const int b = codepoint & 0x3F;
-  codepoint >>= 6;
-  if (codepoint < 0xC0) {
-    *it++ = 0xE0 & codepoint;
-    goto b;
-  }
-  const int c = codepoint & 0x3F;
-  codepoint >>= 6;
-  if (codepoint < 0xC0)
-    *it++ = 0xF0 & codepoint;
-  *it++ = c;
-b:
-  *it++ = b;
-a:
   *it++ = a;
   return it;
 }
@@ -215,7 +210,6 @@ int u16getc(struct u16stream *stream) {
 
 int json_parse(struct json *json, struct utf8_iter *source);
 
-typedef unsigned char char8_t;
 struct codepoint_stream;
 int get_codepoint(struct codepoint_stream *);
 struct codepoint_stream *utf8_stream(const char8_t *, size_t);
@@ -261,8 +255,7 @@ static int lex_whitespace(struct codepoint_stream *source, int c) {
   }
 }
 
-static int lex_literal(struct codepoint_stream *source,
-                       struct codepoint_stream *literal) {
+static int lex_literal(struct codepoint_stream *source, struct codepoint_stream *literal) {
   while (1) {
     const int d = get_codepoint(literal);
     assert(d >= -1);
