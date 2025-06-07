@@ -1,6 +1,4 @@
 #include <cassert>
-#include <iterator>
-#include <ranges>
 #include <string>
 #include <string_view>
 
@@ -15,47 +13,30 @@ class u8iterator {
 public:
   using difference_type = std::ptrdiff_t;
   using value_type = int;
-  constexpr u8iterator(const R &r) noexcept;
-  constexpr int operator*() const;
-  constexpr u8iterator &operator++();
-  constexpr u8iterator operator++(int);
+  constexpr u8iterator(const R &r)
+      : curr(std::ranges::begin(r)), end(std::ranges::end(r)), codepoint(next()) {}
+  constexpr int operator*() const {
+    if (codepoint < 0) {
+      throw codepoint;
+    }
+    return codepoint;
+  }
+  constexpr u8iterator &operator++() {
+    if (codepoint < 0) {
+      throw codepoint;
+    }
+    codepoint = next();
+    return *this;
+  }
+  constexpr u8iterator operator++(int) {
+    auto old = *this;
+    ++*this;
+    return old;
+  }
 };
 
 static_assert(std::input_iterator<u8iterator<std::u8string>>);
 static_assert(std::input_iterator<u8iterator<std::u8string_view>>);
-
-template <std::ranges::input_range R>
-  requires std::same_as<std::ranges::range_value_t<R>, char8_t>
-constexpr u8iterator<R>::u8iterator(const R &r) noexcept : curr(std::begin(r)), end(std::end(r)) {
-  codepoint = next();
-}
-
-template <std::ranges::input_range R>
-  requires std::same_as<std::ranges::range_value_t<R>, char8_t>
-constexpr int u8iterator<R>::operator*() const {
-  if (codepoint < 0) {
-    throw codepoint;
-  }
-  return codepoint;
-}
-
-template <std::ranges::input_range R>
-  requires std::same_as<std::ranges::range_value_t<R>, char8_t>
-constexpr u8iterator<R> &u8iterator<R>::operator++() {
-  if (codepoint < 0) {
-    throw codepoint;
-  }
-  codepoint = next();
-  return *this;
-}
-
-template <std::ranges::input_range R>
-  requires std::same_as<std::ranges::range_value_t<R>, char8_t>
-constexpr u8iterator<R> u8iterator<R>::operator++(int) {
-  auto old = *this;
-  ++*this;
-  return old;
-}
 
 template <std::ranges::input_range R>
   requires std::same_as<std::ranges::range_value_t<R>, char8_t>
