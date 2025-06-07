@@ -21,3 +21,13 @@ enum json_error {
 };
 
 int lex_json_text(struct codepoint_stream *source);
+
+void handle_json_whitespace(struct codepoint_stream *source);
+
+void handle_json_string(struct codepoint_stream *source);
+
+void handle_json_array(struct codepoint_stream *source);
+
+void handle_json_object(struct codepoint_stream *source);
+
+void handle_json_literal(struct codepoint_stream *source);

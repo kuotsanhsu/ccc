@@ -86,3 +86,8 @@ struct codepoint_stream *utf8_stream(const char8_t *string, size_t string_size)
 	struct codepoint_stream stream = {string, string + string_size};
 	return &stream; // FIXME: dangling pointer
 }
+
+void handle_json_string(struct codepoint_stream *source)
+{
+	__builtin_debugtrap();
+}

@@ -12,6 +12,7 @@ static int lex_whitespace(struct codepoint_stream *source, int c)
 		case '\r':
 			break;
 		default:
+			handle_json_whitespace(source);
 			return c;
 		}
 	}
@@ -24,8 +25,12 @@ static int lex_literal(struct codepoint_stream *source,
 		const int d = get_codepoint(literal);
 		assert(d >= -1);
 		const int c = get_codepoint(source);
-		if (d == -1 || c < 0)
+		if (c < 0)
 			return c;
+		if (d == -1) {
+			handle_json_literal(source);
+			return c;
+		}
 		if (c != d)
 			return JSON_ERR_lex_literal;
 	}
@@ -60,6 +65,7 @@ static int lex_string(struct codepoint_stream *source)
 			return c;
 		switch (c) {
 		case '"':
+			handle_json_string(source);
 			return get_codepoint(source);
 		case '\\': {
 			const int c = get_codepoint(source);
@@ -165,6 +171,7 @@ static int lex_array(struct codepoint_stream *source)
 			return c;
 		switch (c) {
 		case ']':
+			handle_json_array(source);
 			return get_codepoint(source);
 		case ',':
 			c = get_codepoint(source);
@@ -209,6 +216,7 @@ static int lex_object(struct codepoint_stream *source)
 			return c;
 		switch (c) {
 		case '}':
+			handle_json_object(source);
 			return get_codepoint(source);
 		case ',':
 			c = get_codepoint(source);
