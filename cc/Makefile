@@ -6,7 +6,7 @@ cc_srcs := $(wildcard *.cc)
 objs := $(cc_srcs:.cc=.o)
 deps := $(objs:.o=.d)
 -include $(deps)
-CXXFLAGS += -std=c++23
+CXXFLAGS += -std=c++23 -fno-exceptions
 CPPFLAGS += -MMD -MP -Werror -Wpointer-arith -Wimplicit-fallthrough
 LDFLAGS += -flto=thin
 
