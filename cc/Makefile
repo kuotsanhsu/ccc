@@ -1,4 +1,4 @@
-.DEFAULT_GOAL := test_json_syntax
+.DEFAULT_GOAL := test_unicode
 .SUFFIXES:
 .SUFFIXES: .cc .o
 
@@ -10,7 +10,9 @@ CXXFLAGS += -std=c++23
 CPPFLAGS += -MMD -MP -Werror -Wpointer-arith -Wimplicit-fallthrough
 LDFLAGS += -flto=thin
 
+test_unicode: test_unicode.o unicode.o
 test_json_syntax: test_json_syntax.o
+test_unicode test_json_syntax:
 	$(CXX) $(CXXFLAGS) $(CPPFLAGS) $(LDFLAGS) $(TARGET_ARCH) $^ $(LOADLIBES) $(LDLIBS) -o $@
 
 .PHONY: clean cleanall
