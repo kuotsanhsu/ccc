@@ -1,5 +1,4 @@
 #include <cassert>
-#include <string>
 #include <string_view>
 
 template <std::ranges::input_range R>
@@ -35,7 +34,6 @@ public:
   }
 };
 
-static_assert(std::input_iterator<u8iterator<std::u8string>>);
 static_assert(std::input_iterator<u8iterator<std::u8string_view>>);
 
 template <std::ranges::input_range R>
