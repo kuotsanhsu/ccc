@@ -1,29 +1,28 @@
 #pragma once
 #include <ranges>
 
-template <std::ranges::input_range R> class codepoint_iterator {
-protected:
+template <std::ranges::input_range R, typename T>
+  requires std::same_as<std::ranges::range_value_t<R>, T>
+class codepoint_iterator {
   std::ranges::iterator_t<R> code_unit_iter;
   std::ranges::sentinel_t<R> code_unit_end;
   int codepoint;
-
-private:
-  constexpr virtual int next() noexcept = 0;
+  template <typename U> constexpr int next() noexcept;
 
 public:
   using difference_type = std::ptrdiff_t;
   using value_type = int;
   constexpr codepoint_iterator(const R &code_units) noexcept
-      : code_unit_iter(std::ranges::begin(code_units)),
-        code_unit_end(std::ranges::end(code_units)) {}
+      : code_unit_iter(std::ranges::begin(code_units)), code_unit_end(std::ranges::end(code_units)),
+        codepoint(next<T>()) {}
   constexpr int operator*() const noexcept { return codepoint; }
-  template <class Self> constexpr Self &operator++(this Self &self) noexcept {
-    self.codepoint = self.next();
-    return self;
+  constexpr codepoint_iterator &operator++() noexcept {
+    codepoint = next<T>();
+    return *this;
   }
-  template <class Self> constexpr Self operator++(this Self &self, int) noexcept {
-    auto old = self;
-    ++self;
+  constexpr codepoint_iterator operator++(int) noexcept {
+    auto old = *this;
+    ++*this;
     return old;
   }
 
@@ -36,21 +35,13 @@ public:
   friend constexpr bool operator!=(int sentinal, const codepoint_iterator &it) noexcept {
     return sentinal != it.codepoint;
   }
-};
 
-template <std::ranges::input_range R>
-  requires std::same_as<std::ranges::range_value_t<R>, char8_t>
-class u8iterator : public codepoint_iterator<R> {
-public:
-  constexpr u8iterator(const R &code_units) noexcept : codepoint_iterator<R>(code_units) {
-    this->codepoint = next();
-  }
-
-  constexpr int next() noexcept final {
-    if (this->code_unit_iter == this->code_unit_end) {
-      return this->sentinal;
+private:
+  template <> constexpr int next<char8_t>() noexcept {
+    if (code_unit_iter == code_unit_end) {
+      return sentinal;
     }
-    const int a = *this->code_unit_iter++;
+    const int a = *code_unit_iter++;
     if (a < 0x80) {
       // 00..7F
       // 0xxx'xxxx
@@ -59,14 +50,14 @@ public:
     if (a < 0xC2 || 0xF4 < a) {
       return -3;
     }
-    if (this->code_unit_iter == this->code_unit_end) {
+    if (code_unit_iter == code_unit_end) {
       return -2;
     }
-    const int b = *this->code_unit_iter ^ 0x80;
+    const int b = *code_unit_iter ^ 0x80;
     if (b >> 6) {
       return -3;
     }
-    ++this->code_unit_iter;
+    ++code_unit_iter;
     int code_point = a << 6 ^ b;
     if (a < 0xE0) {
       // C2..DF     80..BF
@@ -97,14 +88,14 @@ public:
       break;
     }
 
-    if (this->code_unit_iter == this->code_unit_end) {
+    if (code_unit_iter == code_unit_end) {
       return -2;
     }
-    const int c = *this->code_unit_iter ^ 0x80;
+    const int c = *code_unit_iter ^ 0x80;
     if (c >> 6) {
       return -3;
     }
-    ++this->code_unit_iter;
+    ++code_unit_iter;
     code_point = (code_point << 6) ^ c;
     if (a < 0xF0) {
       // E0         A0..BF     80..BF
@@ -115,14 +106,14 @@ public:
       return code_point ^ (0xE0 << 12);
     }
 
-    if (this->code_unit_iter == this->code_unit_end) {
+    if (code_unit_iter == code_unit_end) {
       return -2;
     }
-    const int d = *this->code_unit_iter ^ 0x80;
+    const int d = *code_unit_iter ^ 0x80;
     if (d >> 6) {
       return -3;
     }
-    ++this->code_unit_iter;
+    ++code_unit_iter;
     code_point = (code_point << 6) ^ d;
     // F0         90..BF     80..BF     80..BF
     // F1..F3     80..BF     80..BF     80..BF
@@ -130,39 +121,29 @@ public:
     // 1111'0xxx  10xx'xxxx  10xx'xxxx  10xx'xxxx
     return code_point ^ (0xF0 << 18);
   }
-};
 
-// template <std::ranges::input_range R>
-//   requires std::same_as<std::ranges::range_value_t<R>, char8_t>
-// u8iterator(const R &) -> u8iterator<R>;
-
-template <std::ranges::input_range R, typename CharT>
-  requires std::same_as<std::ranges::range_value_t<R>, char16_t>
-class u16iterator : public codepoint_iterator<R> {
-public:
-  constexpr u16iterator(const R &code_units) noexcept : codepoint_iterator<R>(code_units) {
-    this->codepoint = next();
-  }
-
-  constexpr int next() noexcept {
-    if (this->code_unit_iter == this->code_unit_end) {
-      return -1;
+  template <> constexpr int next<char16_t>() noexcept {
+    if (code_unit_iter == code_unit_end) {
+      return sentinal;
     }
-    const int a = *this->code_unit_iter++;
+    const int a = *code_unit_iter++;
     const int c = a ^ 0xD800;
     if (c >> 10) {
       return a;
     }
-    if (this->code_unit_iter == this->code_unit_end) {
+    if (code_unit_iter == code_unit_end) {
       return -2;
     }
-    const int b = *this->code_unit_iter++ ^ 0xDC00;
+    const int b = *code_unit_iter++ ^ 0xDC00;
     if (b >> 10) {
       return -3;
     }
     return (c + 0x10000) << 10 ^ b;
   }
 };
+
+template <typename R> using u8iterator = codepoint_iterator<R, char8_t>;
+template <typename R> using u16iterator = codepoint_iterator<R, char16_t>;
 
 template <std::ranges::output_range<char8_t> R>
 consteval bool utf8_putc(R &it, int codepoint) noexcept {
