@@ -10,8 +10,8 @@ CXXFLAGS += -std=c++23 -fno-exceptions
 CPPFLAGS += -MMD -MP -Werror -Wpointer-arith -Wimplicit-fallthrough
 LDFLAGS += -flto=thin
 
-test_unicode: test_unicode.o
-test_json: test_json.o
+# test_unicode: test_unicode.o
+# test_json: test_json.o
 # test_unicode test_json_syntax:
 # 	$(CXX) $(CXXFLAGS) $(CPPFLAGS) $(LDFLAGS) $(TARGET_ARCH) $^ $(LOADLIBES) $(LDLIBS) -o $@
 
