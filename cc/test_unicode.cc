@@ -3,8 +3,14 @@
 #include <ranges>
 #include <string_view>
 
-template <std::ranges::input_range R>
-  requires std::same_as<std::ranges::range_value_t<R>, char8_t>
+template <typename R, typename CharT>
+concept code_unit_sequence =
+    std::ranges::input_range<R> && std::same_as<std::ranges::range_value_t<R>, CharT>;
+
+template <typename R>
+concept utf8_code_unit_sequence = code_unit_sequence<R, char8_t>;
+
+template <utf8_code_unit_sequence R>
 class codepoint_view : public std::ranges::view_interface<codepoint_view<R>> {
   R code_units;
 
@@ -17,9 +23,7 @@ public:
   constexpr std::default_sentinel_t end() const noexcept { return std::default_sentinel; }
 };
 
-template <std::ranges::input_range R>
-  requires std::same_as<std::ranges::range_value_t<R>, char8_t>
-class codepoint_view<R>::iterator {
+template <utf8_code_unit_sequence R> class codepoint_view<R>::iterator {
   std::ranges::iterator_t<R> code_unit_iter;
   std::ranges::sentinel_t<R> code_unit_end;
   int codepoint;
@@ -47,9 +51,7 @@ public:
   constexpr bool operator==(std::default_sentinel_t) const noexcept { return codepoint == eof; }
 };
 
-template <std::ranges::input_range R>
-  requires std::same_as<std::ranges::range_value_t<R>, char8_t>
-constexpr int codepoint_view<R>::iterator::next() {
+template <utf8_code_unit_sequence R> constexpr int codepoint_view<R>::iterator::next() {
   if (code_unit_iter == code_unit_end) {
     return eof;
   }
