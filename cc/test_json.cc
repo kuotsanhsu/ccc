@@ -2,21 +2,6 @@
 #include <cassert>
 #include <string_view>
 
-enum class json_marker : char8_t {
-  JSON_begin_array = '[',
-  JSON_begin_object = '{',
-  JSON_end_array = '\1',
-  JSON_end_object = '\1',
-  // JSON_name_separator = ':',
-  JSON_value_separator = '\0',
-  JSON_false = 'f',
-  JSON_null = 'n',
-  JSON_true = 't',
-  JSON_e = '/', // -./0123456789
-  JSON_begin_string = '"',
-  JSON_end_string = u8'\xFF',
-};
-
 template <utf8_code_unit_sequence R> class json_parser {
   codepoint_view<R>::iterator source_iter;
 
@@ -34,10 +19,33 @@ template <utf8_code_unit_sequence R> class json_parser {
     err_lex_string = -20,
   };
 
-public:
-  json_parser(R source) : source_iter(codepoint_view<R>(source).begin()) {}
+  enum : char8_t {
+    marker_begin_array = '[',
+    marker_begin_object = '{',
+    marker_end_array = '\1',
+    marker_end_object = '\1',
+    // marker_name_separator = ':',
+    marker_value_separator = '\0',
+    marker_false = 'f',
+    marker_null = 'n',
+    marker_true = 't',
+    marker_e = '/', // -./0123456789
+    marker_begin_string = '"',
+    marker_end_string = u8'\xFF',
+  };
 
-  int lex_json_text() {
+  constexpr static bool isdigit(int c) { return '0' <= c && c <= '9'; }
+
+  constexpr static bool isxdigit(int c) {
+    return isdigit(c) || 'a' <= c && c <= 'f' || 'A' <= c && c <= 'F';
+  }
+
+  constexpr static bool isnumber(int c) { return '-' <= c && c <= '9'; }
+
+public:
+  constexpr json_parser(R source) : source_iter(codepoint_view<R>(source).begin()) {}
+
+  constexpr int lex_json_text() {
     int c = *source_iter++;
     if (c == 0xFEFF) { // Skip BOM.
       c = *source_iter++;
@@ -46,7 +54,7 @@ public:
   }
 
 private:
-  int lex_whitespace(int c) {
+  constexpr int lex_whitespace(int c) {
     for (;; c = *source_iter++) {
       switch (c) {
       case ' ':
@@ -60,7 +68,7 @@ private:
     }
   }
 
-  template <utf8_code_unit_sequence T> int lex_literal(T &&literal) {
+  template <utf8_code_unit_sequence T> constexpr int lex_literal(T &&literal) {
     int c = *source_iter++;
     for (const int d : literal | to_codepoint) {
       assert(d >= 0);
@@ -75,32 +83,31 @@ private:
     return c;
   }
 
-  int lex_4_xdigits() {
+  constexpr int lex_4_xdigits() {
     for (int n = 4; n--;) {
-      const int c = *source_iter++;
-      if (c < 0) {
+      if (const int c = *source_iter++; c < 0) {
         return c;
+      } else if (!isxdigit(c)) {
+        return err_lex_xdigit;
       }
-      if (isxdigit(c)) {
-        continue;
-      }
-      return err_lex_xdigit;
     }
     return 0;
   }
 
-  int lex_string() {
+  constexpr int lex_string() {
     while (1) {
       const int c = *source_iter++;
-      if (c < 0)
+      if (c < 0) {
         return c;
+      }
       switch (c) {
       case '"':
         return *source_iter++;
       case '\\': {
         const int c = *source_iter++;
-        if (c < 0)
+        if (c < 0) {
           return c;
+        }
         switch (c) {
         case '"':
         case '\\':
@@ -111,12 +118,11 @@ private:
         case 'r':
         case 't':
           break;
-        case 'u': {
-          const int ret = lex_4_xdigits();
-          if (ret < 0)
+        case 'u':
+          if (const int ret = lex_4_xdigits(); ret < 0) {
             return ret;
+          }
           break;
-        }
         default:
           return err_lex_escape;
         }
@@ -125,8 +131,9 @@ private:
       default:
         // Control characters (U+0000 through U+001F) MUST be
         // escaped.
-        if (c < 0x20)
+        if (c < 0x20) {
           return err_lex_string;
+        }
         // Quotation mark (U+22) WILL NOT appear here.
         assert(c != 0x22);
         // Reverse solidus (U+5C) WILL NOT appear here.
@@ -137,20 +144,23 @@ private:
     }
   }
 
-  int lex_1_or_more_digits(int c) {
-    if (c < 0)
+  constexpr int lex_1_or_more_digits(int c) {
+    if (c < 0) {
       return c;
-    if (!isdigit(c))
+    }
+    if (!isdigit(c)) {
       return err_lex_digit;
+    }
     do {
       c = *source_iter++;
     } while (isdigit(c));
     return c;
   }
 
-  int lex_number_frac_exp(int c) {
-    if (c == '.')
+  constexpr int lex_number_frac_exp(int c) {
+    if (c == '.') {
       c = lex_1_or_more_digits(*source_iter++);
+    }
     switch (c) {
     case 'e':
     case 'E':
@@ -165,7 +175,7 @@ private:
     return c;
   }
 
-  int lex_number_after_first_digit() {
+  constexpr int lex_number_after_first_digit() {
     int c = *source_iter++;
     while (isdigit(c)) {
       c = *source_iter++;
@@ -173,25 +183,27 @@ private:
     return lex_number_frac_exp(c);
   }
 
-  int lex_number_int_frac_exp() {
-    const int c = *source_iter++;
-    if (c < 0)
+  constexpr int lex_number_int_frac_exp() {
+    if (const int c = *source_iter++; c < 0) {
       return c;
-    if ('1' <= c && c <= '9')
+    } else if ('1' <= c && c <= '9') {
       return lex_number_after_first_digit();
-    if (c == '0')
+    } else if (c == '0') {
       return lex_number_frac_exp(*source_iter++);
+    }
     return err_lex_escape;
   }
 
-  int lex_array() {
+  constexpr int lex_array() {
     for (int c = *source_iter++;;) {
       c = lex_value(c);
-      if (c < 0)
+      if (c < 0) {
         return c;
+      }
       c = lex_whitespace(c);
-      if (c < 0)
+      if (c < 0) {
         return c;
+      }
       switch (c) {
       case ']':
         return *source_iter++;
@@ -204,11 +216,12 @@ private:
     }
   }
 
-  int lex_object() {
+  constexpr int lex_object() {
     for (int c = *source_iter++;;) {
       c = lex_whitespace(c);
-      if (c < 0)
+      if (c < 0) {
         return c;
+      }
       switch (c) {
       case '"':
         c = lex_string();
@@ -218,8 +231,9 @@ private:
       }
 
       c = lex_whitespace(c);
-      if (c < 0)
+      if (c < 0) {
         return c;
+      }
       switch (c) {
       case ':':
         c = *source_iter++;
@@ -229,12 +243,14 @@ private:
       }
 
       c = lex_value(c);
-      if (c < 0)
+      if (c < 0) {
         return c;
+      }
 
       c = lex_whitespace(c);
-      if (c < 0)
+      if (c < 0) {
         return c;
+      }
       switch (c) {
       case '}':
         return *source_iter++;
@@ -247,13 +263,15 @@ private:
     }
   }
 
-  int lex_value(int c) {
+  constexpr int lex_value(int c) {
     using namespace std::string_view_literals;
     c = lex_whitespace(c);
-    if (c < 0)
+    if (c < 0) {
       return c;
-    if ('1' <= c && c <= '9')
+    }
+    if ('1' <= c && c <= '9') {
       return lex_number_after_first_digit();
+    }
     switch (c) {
     case '0':
       return lex_number_frac_exp(*source_iter++);
@@ -276,55 +294,58 @@ private:
   }
 };
 
-int main() {
-  for (const std::u8string_view source : {
-           u8"false",
-           u8"null",
-           u8"true",
-           u8"\"Hello world!\"",
-           u8"42",
-       }) {
-    assert(json_parser(source).lex_json_text() == -1);
-  }
-  constexpr char8_t file1[] = {
+template <utf8_code_unit_sequence R> constexpr bool test(R &&source) {
+  return json_parser(source).lex_json_text() == -1;
+}
+
+using namespace std::string_view_literals;
+static_assert(test(u8"false"sv));
+static_assert(test(u8"null"sv));
+static_assert(test(u8"true"sv));
+static_assert(test(u8"\"Hello world!\""sv));
+static_assert(test(u8"42"sv));
+
+constexpr char8_t file1[] = {
 #embed "Image.json"
-  };
-  constexpr char8_t file2[] = {
+};
+constexpr char8_t file2[] = {
 #embed "San_Francisco_and_Sunnyvale.json"
-  };
-  static_assert(std::size(file1) == 330);
-  static_assert(std::size(file2) == 485);
-  assert(json_parser(std::views::all(file1)).lex_json_text() == -1);
-  assert(json_parser(std::views::all(file2)).lex_json_text() == -1);
-  constexpr std::string_view image = // clang-format off
-      "{"
-				"Image\xFF" "{"
-					"Width\xFF" "800"
+};
+static_assert(std::size(file1) == 330);
+static_assert(std::size(file2) == 485);
+static_assert(json_parser(std::views::all(file1)).lex_json_text() == -1);
+static_assert(json_parser(std::views::all(file2)).lex_json_text() == -1);
+
+constexpr std::u8string_view image = // clang-format off
+		u8"{"
+			"Image\xFF" "{"
+				"Width\xFF" "800"
+			"\0"
+				"Height\xFF" "600"
+			"\0"
+				"Title\xFF" "\"View from 15th Floor\xFF"
+			"\0"
+				"Thumbnail\xFF" "{"
+					"Url\xFF" "\"http://www.example.com/image/481989943\xFF"
 				"\0"
-					"Height\xFF" "600"
+					"Height\xFF" "125"
 				"\0"
-					"Title\xFF" "\"View from 15th Floor\xFF"
+					"Width\xFF" "100"
+				"\1"
+			"\0"
+				"Animated\xFF" "f"
+			"\0"
+				"IDs\xFF" "["
+					"116"
 				"\0"
-					"Thumbnail\xFF" "{"
-						"Url\xFF" "\"http://www.example.com/image/481989943\xFF"
-					"\0"
-						"Height\xFF" "125"
-					"\0"
-						"Width\xFF" "100"
-					"\1"
+					"943"
 				"\0"
-					"Animated\xFF" "f"
+					"234"
 				"\0"
-					"IDs\xFF" "["
-						"116"
-					"\0"
-						"943"
-					"\0"
-						"234"
-					"\0"
-						"38793"
-					"\1"
+					"38793"
 				"\1"
 			"\1"
+		"\1"
 	; // clang-format on
-}
+
+int main() {}
