@@ -4,3 +4,4 @@ test_*
 !test_*.*
 *.o
 *.d
+*.dSYM/
