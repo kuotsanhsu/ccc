@@ -1,5 +1,6 @@
 #include "json.hh"
 #include <algorithm>
+#include <iostream>
 
 template <utf8_code_unit_sequence R> constexpr bool test(R &&source) {
   return json_parser(source).lex_json_text() == -1;
@@ -64,4 +65,43 @@ constexpr std::u8string_view image = // clang-format off
 		"\1"
 	; // clang-format on
 
-int main() {}
+template <utf8_code_unit_sequence R> class diagnostic_json_parser : public json_parser<R> {
+  constexpr virtual int end_json_text(int c) override {
+    std::cout << std::endl;
+    return c;
+  }
+  constexpr virtual int end_false(int c) override {
+    std::cout.put('f');
+    return c;
+  }
+  constexpr virtual int end_null(int c) override {
+    std::cout.put('n');
+    return c;
+  }
+  constexpr virtual int end_true(int c) override {
+    std::cout.put('t');
+    return c;
+  }
+  constexpr virtual void begin_string() override { std::cout.put('<'); }
+  constexpr virtual void put_codepoint(int c) override { std::cout.put(c); }
+  constexpr virtual int end_string(int c) override {
+    std::cout.put('>');
+    return c;
+  }
+  constexpr virtual void begin_array() override { std::cout.put('['); }
+  constexpr virtual int end_array(int c) override {
+    std::cout.put(']');
+    return c;
+  }
+  constexpr virtual void begin_object() override { std::cout.put('{'); }
+  constexpr virtual int end_object(int c) override {
+    std::cout.put('}');
+    return c;
+  }
+
+public:
+  using json_parser<R>::json_parser;
+};
+template <typename R> diagnostic_json_parser(R) -> diagnostic_json_parser<R>;
+
+int main() { assert(diagnostic_json_parser(std::views::all(file1)).lex_json_text() == -1); }

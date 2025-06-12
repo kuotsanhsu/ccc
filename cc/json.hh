@@ -1,6 +1,5 @@
 #include "unicode.hh"
 #include <cassert>
-#include <string_view>
 
 template <utf8_code_unit_sequence R> class json_parser {
   codepoint_view<R>::iterator source_iter;
@@ -19,29 +18,11 @@ template <utf8_code_unit_sequence R> class json_parser {
     err_lex_string = -20,
   };
 
-  enum : char8_t {
-    marker_begin_array = '[',
-    marker_begin_object = '{',
-    marker_end_array = '\1',
-    marker_end_object = '\1',
-    // marker_name_separator = ':',
-    marker_value_separator = '\0',
-    marker_false = 'f',
-    marker_null = 'n',
-    marker_true = 't',
-    marker_e = '/', // -./0123456789
-    marker_begin_string = '"',
-    marker_end_string = u8'\xFF',
-  };
-
   constexpr static bool isdigit(int c) noexcept { return '0' <= c && c <= '9'; }
 
   constexpr static bool isxdigit(int c) noexcept {
     return isdigit(c) || 'a' <= c && c <= 'f' || 'A' <= c && c <= 'F';
   }
-
-  /** `-./0123456789` */
-  constexpr static bool isnumber(int c) noexcept { return '-' <= c && c <= '9'; }
 
 public:
   constexpr json_parser(R source) : source_iter(codepoint_view<R>(source).begin()) {}
@@ -52,19 +33,31 @@ public:
     if (c == 0xFEFF) { // Skip BOM.
       c = *source_iter++;
     }
-    return lex_whitespace(lex_value(c));
+    return end_json_text(lex_whitespace(lex_value(c)));
   }
 
 private:
-  constexpr virtual int parse_whitespace(int c) { return c; }
-  constexpr virtual int parse_literal(int c) { return c; }
-  constexpr virtual int parse_string(int c) { return c; }
-  constexpr virtual int parse_array(int c) { return c; }
-  constexpr virtual int parse_object(int c) { return c; }
+  constexpr virtual int end_json_text(int c) { return c; }
+  constexpr virtual void begin_whitespace(int c) {}
+  constexpr virtual int end_whitespace(int c) { return c; }
+  constexpr virtual int end_false(int c) { return c; }
+  constexpr virtual int end_null(int c) { return c; }
+  constexpr virtual int end_true(int c) { return c; }
+  constexpr virtual void begin_string() {}
+  constexpr virtual void put_codepoint(int c) {}
+  constexpr virtual int end_string(int c) { return c; }
+  constexpr virtual void begin_array() {}
+  constexpr virtual int end_array(int c) { return c; }
+  constexpr virtual void begin_object() {}
+  constexpr virtual int end_object(int c) { return c; }
 
-private:
+  template <int K> constexpr int end_literal(int c);
+  template <> constexpr int end_literal<'f'>(int c) { return end_false(c); }
+  template <> constexpr int end_literal<'n'>(int c) { return end_null(c); }
+  template <> constexpr int end_literal<'t'>(int c) { return end_true(c); }
+
   constexpr int lex_whitespace(int c) {
-    for (;; c = *source_iter++) {
+    for (begin_whitespace(c);; c = *source_iter++) {
       switch (c) {
       case ' ':
       case '\t':
@@ -72,15 +65,14 @@ private:
       case '\r':
         break;
       default:
-        return parse_whitespace(c);
+        return end_whitespace(c);
       }
     }
   }
 
-  /** FIXME: unroll using std::integer_sequence for the literal value? */
-  template <utf8_code_unit_sequence T> constexpr int lex_literal(T &&literal) {
+  template <int K, int... Ls> constexpr int lex_literal() {
     int c = *source_iter++;
-    for (const int d : literal | to_codepoint) {
+    for (const int d : {Ls...}) {
       assert(d >= 0);
       if (c < 0) {
         break;
@@ -90,7 +82,7 @@ private:
       }
       c = *source_iter++;
     }
-    return parse_literal(c);
+    return end_literal<K>(c);
   }
 
   constexpr int lex_4_xdigits() {
@@ -105,6 +97,7 @@ private:
   }
 
   constexpr int lex_string() {
+    begin_string();
     while (1) {
       const int c = *source_iter++;
       if (c < 0) {
@@ -112,7 +105,7 @@ private:
       }
       switch (c) {
       case '"':
-        return parse_string(*source_iter++);
+        return end_string(*source_iter++);
       case '\\': {
         const int c = *source_iter++;
         if (c < 0) {
@@ -122,11 +115,22 @@ private:
         case '"':
         case '\\':
         case '/':
+          put_codepoint(c);
+          break;
         case 'b':
+          put_codepoint('\b');
+          break;
         case 'f':
+          put_codepoint('\f');
+          break;
         case 'n':
+          put_codepoint('\n');
+          break;
         case 'r':
+          put_codepoint('\r');
+          break;
         case 't':
+          put_codepoint('\t');
           break;
         case 'u':
           if (const int ret = lex_4_xdigits(); ret < 0) {
@@ -150,6 +154,7 @@ private:
         assert(c != 0x5C);
         // WILL be a valid code point.
         assert(c < 0x110000);
+        put_codepoint(c);
       }
     }
   }
@@ -205,6 +210,7 @@ private:
   }
 
   constexpr int lex_array() {
+    begin_array();
     for (int c = *source_iter++;;) {
       c = lex_value(c);
       if (c < 0) {
@@ -216,7 +222,7 @@ private:
       }
       switch (c) {
       case ']':
-        return parse_array(*source_iter++);
+        return end_array(*source_iter++);
       case ',':
         c = *source_iter++;
         break;
@@ -227,6 +233,7 @@ private:
   }
 
   constexpr int lex_object() {
+    begin_object();
     for (int c = *source_iter++;;) {
       c = lex_whitespace(c);
       if (c < 0) {
@@ -263,7 +270,7 @@ private:
       }
       switch (c) {
       case '}':
-        return parse_object(*source_iter++);
+        return end_object(*source_iter++);
       case ',':
         c = *source_iter++;
         break;
@@ -274,7 +281,6 @@ private:
   }
 
   constexpr int lex_value(int c) {
-    using namespace std::string_view_literals;
     c = lex_whitespace(c);
     if (c < 0) {
       return c;
@@ -288,11 +294,11 @@ private:
     case '-':
       return lex_number_int_frac_exp();
     case 'f':
-      return lex_literal(u8"alse"sv);
+      return lex_literal<'f', 'a', 'l', 's', 'e'>();
     case 'n':
-      return lex_literal(u8"ull"sv);
+      return lex_literal<'n', 'u', 'l', 'l'>();
     case 't':
-      return lex_literal(u8"rue"sv);
+      return lex_literal<'t', 'r', 'u', 'e'>();
     case '"':
       return lex_string();
     case '[':
