@@ -69,22 +69,23 @@ constexpr std::u8string_view image = // clang-format off
 	; // clang-format on
 
 struct diagnostic_json_visitor : json_visitor {
-  constexpr void end_json_text() override { std::cout << std::endl; }
-  constexpr void end_false() override { std::cout.put('f'); }
-  constexpr void end_null() override { std::cout.put('n'); }
-  constexpr void end_true() override { std::cout.put('t'); }
-  constexpr void begin_string() override { std::cout.put('<'); }
-  constexpr void put_codepoint(int c) override {
+  constexpr void end_json_text() final { std::cout << std::endl; }
+  constexpr void end_false() final { std::cout.put('f'); }
+  constexpr void end_null() final { std::cout.put('n'); }
+  constexpr void end_true() final { std::cout.put('t'); }
+  constexpr void begin_string() final { std::cout.put('<'); }
+  constexpr void put_codepoint(int c) final {
     std::wcout.put(c); // FIXME: is mixing cout and wcout bad?
   }
-  constexpr void end_string() override { std::cout.put('>'); }
-  constexpr void begin_array() override { std::cout.put('['); }
-  constexpr void end_array() override { std::cout.put(']'); }
-  constexpr void begin_object() override { std::cout.put('{'); }
-  constexpr void end_object() override { std::cout.put('}'); }
+  constexpr void end_string() final { std::cout.put('>'); }
+  constexpr void begin_array() final { std::cout.put('['); }
+  constexpr void end_array() final { std::cout.put(']'); }
+  constexpr void begin_object() final { std::cout.put('{'); }
+  constexpr void end_object() final { std::cout.put('}'); }
 };
 
 int main() {
   diagnostic_json_visitor visitor;
   assert(json_parser(std::views::all(file1) | to_codepoint, &visitor).lex_json_text() == -1);
+  assert(json_parser(std::views::all(file2) | to_codepoint, &visitor).lex_json_text() == -1);
 }

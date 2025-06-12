@@ -2,7 +2,7 @@
 #include <cassert>
 
 struct json_visitor {
-  virtual ~json_visitor() = default;
+  constexpr virtual ~json_visitor() = default;
   constexpr virtual void end_json_text() {}
   constexpr virtual void begin_whitespace() {}
   constexpr virtual void end_whitespace() {}
@@ -39,7 +39,7 @@ template <codepoint_sequence R> class json_parser {
   constexpr static bool isdigit(int c) noexcept { return '0' <= c && c <= '9'; }
 
   constexpr static bool isxdigit(int c) noexcept {
-    return isdigit(c) || 'a' <= c && c <= 'f' || 'A' <= c && c <= 'F';
+    return isdigit(c) || 'A' <= c && c <= 'F' || 'a' <= c && c <= 'f';
   }
 
 public:
@@ -76,7 +76,6 @@ private:
   template <int K, int... Ls> constexpr int lex_literal() {
     int c = *source_iter++;
     for (const int d : {Ls...}) {
-      assert(d >= 0);
       if (c < 0) {
         break;
       }
@@ -107,7 +106,7 @@ private:
 
   constexpr int lex_string() {
     visitor->begin_string();
-    while (1) {
+    while (true) {
       const int c = *source_iter++;
       if (c < 0) {
         return c;
@@ -184,8 +183,7 @@ private:
     switch (c) {
     case 'e':
     case 'E':
-      c = *source_iter++;
-      switch (c) {
+      switch (c = *source_iter++; c) {
       case '-':
       case '+':
         c = *source_iter++;
@@ -217,12 +215,10 @@ private:
   constexpr int lex_array() {
     visitor->begin_array();
     for (int c = *source_iter++;;) {
-      c = lex_value(c);
-      if (c < 0) {
+      if (c = lex_value(c); c < 0) {
         return c;
       }
-      c = lex_whitespace(c);
-      if (c < 0) {
+      if (c = lex_whitespace(c); c < 0) {
         return c;
       }
       switch (c) {
@@ -241,8 +237,7 @@ private:
   constexpr int lex_object() {
     visitor->begin_object();
     for (int c = *source_iter++;;) {
-      c = lex_whitespace(c);
-      if (c < 0) {
+      if (c = lex_whitespace(c); c < 0) {
         return c;
       }
       switch (c) {
@@ -253,8 +248,7 @@ private:
         return err_lex_object_member;
       }
 
-      c = lex_whitespace(c);
-      if (c < 0) {
+      if (c = lex_whitespace(c); c < 0) {
         return c;
       }
       switch (c) {
@@ -265,13 +259,11 @@ private:
         return err_lex_object_name_separator;
       }
 
-      c = lex_value(c);
-      if (c < 0) {
+      if (c = lex_value(c); c < 0) {
         return c;
       }
 
-      c = lex_whitespace(c);
-      if (c < 0) {
+      if (c = lex_whitespace(c); c < 0) {
         return c;
       }
       switch (c) {
@@ -288,8 +280,7 @@ private:
   }
 
   constexpr int lex_value(int c) {
-    c = lex_whitespace(c);
-    if (c < 0) {
+    if (c = lex_whitespace(c); c < 0) {
       return c;
     }
     if ('1' <= c && c <= '9') {
