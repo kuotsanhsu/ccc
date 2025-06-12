@@ -1,12 +1,21 @@
 #pragma once
 #include <ranges>
 
-template <typename R, typename CharT>
+template <typename R, typename T>
 concept code_unit_sequence =
-    std::ranges::input_range<R> && std::same_as<std::ranges::range_value_t<R>, CharT>;
+    std::ranges::input_range<R> && std::same_as<std::ranges::range_value_t<R>, T>;
+
+template <typename R>
+concept codepoint_sequence = code_unit_sequence<R, int>;
 
 template <typename R>
 concept utf8_code_unit_sequence = code_unit_sequence<R, char8_t>;
+
+template <typename R>
+concept utf16_code_unit_sequence = code_unit_sequence<R, char16_t>;
+
+template <typename R>
+concept utf32_code_unit_sequence = code_unit_sequence<R, char32_t>;
 
 template <utf8_code_unit_sequence R>
 class codepoint_view : public std::ranges::view_interface<codepoint_view<R>> {

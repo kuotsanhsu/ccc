@@ -1,8 +1,8 @@
 #include "unicode.hh"
 #include <cassert>
 
-template <utf8_code_unit_sequence R> class json_parser {
-  codepoint_view<R>::iterator source_iter;
+template <codepoint_sequence R> class json_parser {
+  std::ranges::iterator_t<R> source_iter;
 
   enum {
     err_lex_value = -10,
@@ -25,7 +25,7 @@ template <utf8_code_unit_sequence R> class json_parser {
   }
 
 public:
-  constexpr json_parser(R source) : source_iter(codepoint_view<R>(source).begin()) {}
+  constexpr json_parser(R source) : source_iter(std::ranges::begin(source)) {}
 
   /** Repeated calls to lex_json_text will always return -1. */
   constexpr int lex_json_text() {

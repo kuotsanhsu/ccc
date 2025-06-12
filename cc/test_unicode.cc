@@ -5,6 +5,7 @@
 
 static_assert(std::ranges::input_range<codepoint_view<std::u8string_view>>);
 static_assert(std::input_iterator<codepoint_view<std::u8string_view>::iterator>);
+static_assert(codepoint_sequence<codepoint_view<std::u8string_view>>);
 
 template <utf8_code_unit_sequence T, std::ranges::input_range U = std::initializer_list<int>>
 constexpr bool test(T &&code_units, U &&codepoints) {

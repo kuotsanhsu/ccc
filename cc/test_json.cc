@@ -1,9 +1,10 @@
 #include "json.hh"
+#include "unicode.hh"
 #include <algorithm>
 #include <iostream>
 
 template <utf8_code_unit_sequence R> constexpr bool test(R &&source) {
-  return json_parser(source).lex_json_text() == -1;
+  return json_parser(source | to_codepoint).lex_json_text() == -1;
 }
 
 using namespace std::string_view_literals;
@@ -21,11 +22,11 @@ constexpr char8_t file2[] = {
 };
 static_assert(std::size(file1) == 330);
 static_assert(std::size(file2) == 485);
-static_assert(json_parser(std::views::all(file1)).lex_json_text() == -1);
-static_assert(json_parser(std::views::all(file2)).lex_json_text() == -1);
+static_assert(test(std::views::all(file1)));
+static_assert(test(std::views::all(file2)));
 
 template <utf8_code_unit_sequence R> constexpr bool repeated_parse(R &&source, int repetitions) {
-  json_parser parser(source);
+  json_parser parser(source | to_codepoint);
   const auto rets = std::views::iota(0, repetitions) |
                     std::views::transform([&parser](int) { return parser.lex_json_text(); });
   return std::ranges::all_of(rets, [](int ret) { return ret == -1; });
@@ -65,7 +66,7 @@ constexpr std::u8string_view image = // clang-format off
 		"\1"
 	; // clang-format on
 
-template <utf8_code_unit_sequence R> class diagnostic_json_parser : public json_parser<R> {
+template <codepoint_sequence R> class diagnostic_json_parser : public json_parser<R> {
   constexpr virtual int end_json_text(int c) override {
     std::cout << std::endl;
     return c;
@@ -104,4 +105,6 @@ public:
 };
 template <typename R> diagnostic_json_parser(R) -> diagnostic_json_parser<R>;
 
-int main() { assert(diagnostic_json_parser(std::views::all(file1)).lex_json_text() == -1); }
+int main() {
+  assert(diagnostic_json_parser(std::views::all(file1) | to_codepoint).lex_json_text() == -1);
+}
