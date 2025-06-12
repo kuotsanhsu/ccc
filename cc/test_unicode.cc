@@ -1,6 +1,5 @@
 #include "unicode.hh"
 #include <algorithm>
-#include <cassert>
 #include <string_view>
 
 static_assert(std::ranges::input_range<codepoint_view<std::u8string_view>>);

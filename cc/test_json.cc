@@ -1,11 +1,15 @@
 #include "json.hh"
-#include "unicode.hh"
 #include <algorithm>
 #include <iostream>
 
+template <utf8_code_unit_sequence R>
+constexpr bool test_visitor(R &&source, json_visitor *visitor) {
+  return json_parser(std::forward<R>(source) | to_codepoint, visitor).lex_json_text() == -1;
+}
+
 template <utf8_code_unit_sequence R> constexpr bool test(R &&source) {
   json_visitor visitor;
-  return json_parser(std::forward<R>(source) | to_codepoint, &visitor).lex_json_text() == -1;
+  return test_visitor(std::forward<R>(source), &visitor);
 }
 
 using namespace std::string_view_literals;
@@ -69,12 +73,13 @@ constexpr std::u8string_view image = // clang-format off
 	; // clang-format on
 
 struct diagnostic_json_visitor : json_visitor {
+  constexpr void bom() final { assert(false); }
   constexpr void end_json_text() final { std::cout << std::endl; }
   constexpr void end_false() final { std::cout.put('f'); }
   constexpr void end_null() final { std::cout.put('n'); }
   constexpr void end_true() final { std::cout.put('t'); }
   constexpr void begin_string() final { std::cout.put('<'); }
-  constexpr void put_codepoint(int c) final {
+  constexpr void codepoint(int c) final {
     std::wcout.put(c); // FIXME: is mixing cout and wcout bad?
   }
   constexpr void end_string() final { std::cout.put('>'); }
@@ -82,10 +87,39 @@ struct diagnostic_json_visitor : json_visitor {
   constexpr void end_array() final { std::cout.put(']'); }
   constexpr void begin_object() final { std::cout.put('{'); }
   constexpr void end_object() final { std::cout.put('}'); }
+  constexpr void begin_int(bool minus) final { std::cout.put(minus ? '-' : '+'); }
+  constexpr void begin_frac() final { std::cout.put('.'); }
+  /** The grammar for `exp` is very laxed; these are all valid: `+000`, `-00001`. */
+  constexpr void begin_exp(bool minus) final {
+    exp_leading_zeros = true;
+    exp_minus = minus;
+  }
+  constexpr void end_exp() final {
+    exp_leading_zeros = false;
+    exp_minus = false;
+  }
+  constexpr void digit(char c) final {
+    if (!exp_leading_zeros) {
+      std::cout.put(c);
+      return;
+    }
+    if (c == '0') {
+      return;
+    }
+    std::cout.put('e');
+    begin_int(exp_minus);
+    end_exp();
+  }
+
+private:
+  bool exp_leading_zeros = false;
+  bool exp_minus = false;
 };
 
 int main() {
   diagnostic_json_visitor visitor;
-  assert(json_parser(std::views::all(file1) | to_codepoint, &visitor).lex_json_text() == -1);
-  assert(json_parser(std::views::all(file2) | to_codepoint, &visitor).lex_json_text() == -1);
+  assert(test_visitor(std::views::all(file1), &visitor));
+  assert(test_visitor(std::views::all(file2), &visitor));
+  assert(test_visitor(u8"-10.001e+00000112"sv, &visitor));
+  assert(test_visitor(u8"0.001E-00000"sv, &visitor));
 }

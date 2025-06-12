@@ -1,4 +1,5 @@
 #pragma once
+#include "assert.hh"
 #include <ranges>
 
 template <typename R, typename T>
@@ -27,7 +28,9 @@ public:
   constexpr iterator begin() const {
     return {std::ranges::begin(code_units), std::ranges::end(code_units)};
   }
-  constexpr std::default_sentinel_t end() const noexcept { return std::default_sentinel; }
+  [[nodiscard]] constexpr std::default_sentinel_t end() const noexcept {
+    return std::default_sentinel;
+  }
 };
 
 template <utf8_code_unit_sequence R> class codepoint_view<R>::iterator {
@@ -45,7 +48,13 @@ public:
                      std::ranges::sentinel_t<R> code_unit_end)
       : code_unit_iter(std::move(code_unit_iter)), code_unit_end(std::move(code_unit_end)),
         codepoint(next()) {}
-  constexpr int operator*() const noexcept { return codepoint; }
+  constexpr int operator*() const noexcept {
+    // -3..-1 are error codes, surrogates (U+D800..U+DFFF) are not allowed, and U+10FFFF is the
+    // greatest valid codepoint.
+    consteval_assert(-3 <= codepoint && codepoint < 0xD800 ||
+                     0xE000 <= codepoint && codepoint < 0x11'0000);
+    return codepoint;
+  }
   constexpr iterator &operator++() {
     codepoint = next();
     return *this;
