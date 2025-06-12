@@ -4,7 +4,8 @@
 #include <iostream>
 
 template <utf8_code_unit_sequence R> constexpr bool test(R &&source) {
-  return json_parser(source | to_codepoint).lex_json_text() == -1;
+  json_visitor visitor;
+  return json_parser(std::forward<R>(source) | to_codepoint, &visitor).lex_json_text() == -1;
 }
 
 using namespace std::string_view_literals;
@@ -26,7 +27,8 @@ static_assert(test(std::views::all(file1)));
 static_assert(test(std::views::all(file2)));
 
 template <utf8_code_unit_sequence R> constexpr bool repeated_parse(R &&source, int repetitions) {
-  json_parser parser(source | to_codepoint);
+  json_visitor visitor;
+  json_parser parser(std::forward<R>(source) | to_codepoint, &visitor);
   const auto rets = std::views::iota(0, repetitions) |
                     std::views::transform([&parser](int) { return parser.lex_json_text(); });
   return std::ranges::all_of(rets, [](int ret) { return ret == -1; });
@@ -66,45 +68,23 @@ constexpr std::u8string_view image = // clang-format off
 		"\1"
 	; // clang-format on
 
-template <codepoint_sequence R> class diagnostic_json_parser : public json_parser<R> {
-  constexpr virtual int end_json_text(int c) override {
-    std::cout << std::endl;
-    return c;
+struct diagnostic_json_visitor : json_visitor {
+  constexpr void end_json_text() override { std::cout << std::endl; }
+  constexpr void end_false() override { std::cout.put('f'); }
+  constexpr void end_null() override { std::cout.put('n'); }
+  constexpr void end_true() override { std::cout.put('t'); }
+  constexpr void begin_string() override { std::cout.put('<'); }
+  constexpr void put_codepoint(int c) override {
+    std::wcout.put(c); // FIXME: is mixing cout and wcout bad?
   }
-  constexpr virtual int end_false(int c) override {
-    std::cout.put('f');
-    return c;
-  }
-  constexpr virtual int end_null(int c) override {
-    std::cout.put('n');
-    return c;
-  }
-  constexpr virtual int end_true(int c) override {
-    std::cout.put('t');
-    return c;
-  }
-  constexpr virtual void begin_string() override { std::cout.put('<'); }
-  constexpr virtual void put_codepoint(int c) override { std::cout.put(c); }
-  constexpr virtual int end_string(int c) override {
-    std::cout.put('>');
-    return c;
-  }
-  constexpr virtual void begin_array() override { std::cout.put('['); }
-  constexpr virtual int end_array(int c) override {
-    std::cout.put(']');
-    return c;
-  }
-  constexpr virtual void begin_object() override { std::cout.put('{'); }
-  constexpr virtual int end_object(int c) override {
-    std::cout.put('}');
-    return c;
-  }
-
-public:
-  using json_parser<R>::json_parser;
+  constexpr void end_string() override { std::cout.put('>'); }
+  constexpr void begin_array() override { std::cout.put('['); }
+  constexpr void end_array() override { std::cout.put(']'); }
+  constexpr void begin_object() override { std::cout.put('{'); }
+  constexpr void end_object() override { std::cout.put('}'); }
 };
-template <typename R> diagnostic_json_parser(R) -> diagnostic_json_parser<R>;
 
 int main() {
-  assert(diagnostic_json_parser(std::views::all(file1) | to_codepoint).lex_json_text() == -1);
+  diagnostic_json_visitor visitor;
+  assert(json_parser(std::views::all(file1) | to_codepoint, &visitor).lex_json_text() == -1);
 }

@@ -1,8 +1,26 @@
 #include "unicode.hh"
 #include <cassert>
 
+struct json_visitor {
+  virtual ~json_visitor() = default;
+  constexpr virtual void end_json_text() {}
+  constexpr virtual void begin_whitespace() {}
+  constexpr virtual void end_whitespace() {}
+  constexpr virtual void end_false() {}
+  constexpr virtual void end_null() {}
+  constexpr virtual void end_true() {}
+  constexpr virtual void begin_string() {}
+  constexpr virtual void put_codepoint(int c) {}
+  constexpr virtual void end_string() {}
+  constexpr virtual void begin_array() {}
+  constexpr virtual void end_array() {}
+  constexpr virtual void begin_object() {}
+  constexpr virtual void end_object() {}
+};
+
 template <codepoint_sequence R> class json_parser {
   std::ranges::iterator_t<R> source_iter;
+  json_visitor *visitor;
 
   enum {
     err_lex_value = -10,
@@ -25,39 +43,23 @@ template <codepoint_sequence R> class json_parser {
   }
 
 public:
-  constexpr json_parser(R source) : source_iter(std::ranges::begin(source)) {}
+  constexpr json_parser(R source, json_visitor *visitor)
+      : source_iter(std::ranges::begin(source)), visitor(visitor) {}
 
   /** Repeated calls to lex_json_text will always return -1. */
   constexpr int lex_json_text() {
     int c = *source_iter++;
-    if (c == 0xFEFF) { // Skip BOM.
+    if (constexpr int BOM = 0xFEFF; c == BOM) { // Skip BOM.
       c = *source_iter++;
     }
-    return end_json_text(lex_whitespace(lex_value(c)));
+    c = lex_whitespace(lex_value(c));
+    visitor->end_json_text();
+    return c;
   }
 
 private:
-  constexpr virtual int end_json_text(int c) { return c; }
-  constexpr virtual void begin_whitespace(int c) {}
-  constexpr virtual int end_whitespace(int c) { return c; }
-  constexpr virtual int end_false(int c) { return c; }
-  constexpr virtual int end_null(int c) { return c; }
-  constexpr virtual int end_true(int c) { return c; }
-  constexpr virtual void begin_string() {}
-  constexpr virtual void put_codepoint(int c) {}
-  constexpr virtual int end_string(int c) { return c; }
-  constexpr virtual void begin_array() {}
-  constexpr virtual int end_array(int c) { return c; }
-  constexpr virtual void begin_object() {}
-  constexpr virtual int end_object(int c) { return c; }
-
-  template <int K> constexpr int end_literal(int c);
-  template <> constexpr int end_literal<'f'>(int c) { return end_false(c); }
-  template <> constexpr int end_literal<'n'>(int c) { return end_null(c); }
-  template <> constexpr int end_literal<'t'>(int c) { return end_true(c); }
-
   constexpr int lex_whitespace(int c) {
-    for (begin_whitespace(c);; c = *source_iter++) {
+    for (visitor->begin_whitespace();; c = *source_iter++) {
       switch (c) {
       case ' ':
       case '\t':
@@ -65,7 +67,8 @@ private:
       case '\r':
         break;
       default:
-        return end_whitespace(c);
+        visitor->end_whitespace();
+        return c;
       }
     }
   }
@@ -82,8 +85,14 @@ private:
       }
       c = *source_iter++;
     }
-    return end_literal<K>(c);
+    end_literal<K>();
+    return c;
   }
+
+  template <int K> constexpr void end_literal();
+  template <> constexpr void end_literal<'f'>() { visitor->end_false(); }
+  template <> constexpr void end_literal<'n'>() { visitor->end_null(); }
+  template <> constexpr void end_literal<'t'>() { visitor->end_true(); }
 
   constexpr int lex_4_xdigits() {
     for (int n = 4; n--;) {
@@ -97,7 +106,7 @@ private:
   }
 
   constexpr int lex_string() {
-    begin_string();
+    visitor->begin_string();
     while (1) {
       const int c = *source_iter++;
       if (c < 0) {
@@ -105,7 +114,8 @@ private:
       }
       switch (c) {
       case '"':
-        return end_string(*source_iter++);
+        visitor->end_string();
+        return *source_iter++;
       case '\\': {
         const int c = *source_iter++;
         if (c < 0) {
@@ -115,22 +125,22 @@ private:
         case '"':
         case '\\':
         case '/':
-          put_codepoint(c);
+          visitor->put_codepoint(c);
           break;
         case 'b':
-          put_codepoint('\b');
+          visitor->put_codepoint('\b');
           break;
         case 'f':
-          put_codepoint('\f');
+          visitor->put_codepoint('\f');
           break;
         case 'n':
-          put_codepoint('\n');
+          visitor->put_codepoint('\n');
           break;
         case 'r':
-          put_codepoint('\r');
+          visitor->put_codepoint('\r');
           break;
         case 't':
-          put_codepoint('\t');
+          visitor->put_codepoint('\t');
           break;
         case 'u':
           if (const int ret = lex_4_xdigits(); ret < 0) {
@@ -143,18 +153,13 @@ private:
         break;
       }
       default:
-        // Control characters (U+0000 through U+001F) MUST be
-        // escaped.
-        if (c < 0x20) {
+        if (c < 0x20) { // Control characters (U+0000 through U+001F) MUST be escaped.
           return err_lex_string;
         }
-        // Quotation mark (U+22) WILL NOT appear here.
-        assert(c != 0x22);
-        // Reverse solidus (U+5C) WILL NOT appear here.
-        assert(c != 0x5C);
-        // WILL be a valid code point.
-        assert(c < 0x110000);
-        put_codepoint(c);
+        assert(c != 0x22);    // Quotation mark (U+22) WILL NOT appear here.
+        assert(c != 0x5C);    // Reverse solidus (U+5C) WILL NOT appear here.
+        assert(c < 0x110000); // WILL be a valid code point.
+        visitor->put_codepoint(c);
       }
     }
   }
@@ -210,7 +215,7 @@ private:
   }
 
   constexpr int lex_array() {
-    begin_array();
+    visitor->begin_array();
     for (int c = *source_iter++;;) {
       c = lex_value(c);
       if (c < 0) {
@@ -222,7 +227,8 @@ private:
       }
       switch (c) {
       case ']':
-        return end_array(*source_iter++);
+        visitor->end_array();
+        return *source_iter++;
       case ',':
         c = *source_iter++;
         break;
@@ -233,7 +239,7 @@ private:
   }
 
   constexpr int lex_object() {
-    begin_object();
+    visitor->begin_object();
     for (int c = *source_iter++;;) {
       c = lex_whitespace(c);
       if (c < 0) {
@@ -270,7 +276,8 @@ private:
       }
       switch (c) {
       case '}':
-        return end_object(*source_iter++);
+        visitor->end_object();
+        return *source_iter++;
       case ',':
         c = *source_iter++;
         break;

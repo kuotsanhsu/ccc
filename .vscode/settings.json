@@ -13,8 +13,11 @@
     "[cpp]": {
         "editor.formatOnSave": true,
         "editor.insertSpaces": false,
-        "editor.tabSize": 4,
-        "editor.detectIndentation": false
+        "editor.tabSize": 2,
+        "editor.detectIndentation": false,
+        "editor.codeActionsOnSave": {
+            "source.fixAll": "explicit"
+        }
     },
     "[yaml]": {
         "editor.formatOnSave": true,
@@ -31,6 +34,7 @@
     },
     "yaml.schemas": {
         "https://json.schemastore.org/clang-format.json": ".clang-format",
+        "https://json.schemastore.org/clang-tidy.json": ".clang-tidy",
         "https://json.schemastore.org/clangd.json": ".clangd"
     },
     "clangd.arguments": [
