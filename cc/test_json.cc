@@ -1,4 +1,5 @@
 #include "json.hh"
+#include <algorithm>
 
 template <utf8_code_unit_sequence R> constexpr bool test(R &&source) {
   return json_parser(source).lex_json_text() == -1;
@@ -21,6 +22,15 @@ static_assert(std::size(file1) == 330);
 static_assert(std::size(file2) == 485);
 static_assert(json_parser(std::views::all(file1)).lex_json_text() == -1);
 static_assert(json_parser(std::views::all(file2)).lex_json_text() == -1);
+
+template <utf8_code_unit_sequence R> constexpr bool repeated_parse(R &&source, int repetitions) {
+  json_parser parser(source);
+  const auto rets = std::views::iota(0, repetitions) |
+                    std::views::transform([&parser](int) { return parser.lex_json_text(); });
+  return std::ranges::all_of(rets, [](int ret) { return ret == -1; });
+}
+
+static_assert(repeated_parse(std::views::all(file1), 3));
 
 constexpr std::u8string_view image = // clang-format off
 		u8"{"

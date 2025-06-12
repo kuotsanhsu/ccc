@@ -46,6 +46,7 @@ template <utf8_code_unit_sequence R> class json_parser {
 public:
   constexpr json_parser(R source) : source_iter(codepoint_view<R>(source).begin()) {}
 
+  /** Repeated calls to lex_json_text will always return -1. */
   constexpr int lex_json_text() {
     int c = *source_iter++;
     if (c == 0xFEFF) { // Skip BOM.
@@ -53,6 +54,13 @@ public:
     }
     return lex_whitespace(lex_value(c));
   }
+
+private:
+  constexpr virtual int parse_whitespace(int c) { return c; }
+  constexpr virtual int parse_literal(int c) { return c; }
+  constexpr virtual int parse_string(int c) { return c; }
+  constexpr virtual int parse_array(int c) { return c; }
+  constexpr virtual int parse_object(int c) { return c; }
 
 private:
   constexpr int lex_whitespace(int c) {
@@ -64,7 +72,7 @@ private:
       case '\r':
         break;
       default:
-        return c;
+        return parse_whitespace(c);
       }
     }
   }
@@ -82,7 +90,7 @@ private:
       }
       c = *source_iter++;
     }
-    return c;
+    return parse_literal(c);
   }
 
   constexpr int lex_4_xdigits() {
@@ -104,7 +112,7 @@ private:
       }
       switch (c) {
       case '"':
-        return *source_iter++;
+        return parse_string(*source_iter++);
       case '\\': {
         const int c = *source_iter++;
         if (c < 0) {
@@ -208,7 +216,7 @@ private:
       }
       switch (c) {
       case ']':
-        return *source_iter++;
+        return parse_array(*source_iter++);
       case ',':
         c = *source_iter++;
         break;
@@ -255,7 +263,7 @@ private:
       }
       switch (c) {
       case '}':
-        return *source_iter++;
+        return parse_object(*source_iter++);
       case ',':
         c = *source_iter++;
         break;
