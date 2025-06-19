@@ -1,4 +1,6 @@
 .cache/
+.llvmcache/
+.makecache/
 compile_commands.json
 test_*
 !test_*.*

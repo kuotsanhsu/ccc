@@ -1,47 +1,73 @@
 {
-    "files.associations": {
-        ".clang-format": "yaml",
-        ".clangd": "yaml",
-        "*.h": "c"
+  "terminal.integrated.minimumContrastRatio": 1,
+  "files.associations": {
+    ".clang-format": "yaml",
+    ".clang-tidy": "yaml",
+    ".clangd": "yaml"
+  },
+  "[jsonc][yaml][cpp]": {
+    "editor.formatOnSave": true,
+    "editor.insertSpaces": true,
+    "editor.tabSize": 2,
+    "editor.detectIndentation": false,
+    "editor.codeActionsOnSave": {
+      "source.fixAll": "explicit"
+    }
+  },
+  "[jsonc]": {
+    "editor.quickSuggestions": {
+      "strings": true
     },
-    "[c]": {
-        "editor.formatOnSave": true,
-        "editor.insertSpaces": false,
-        "editor.tabSize": 8,
-        "editor.detectIndentation": false
+    "editor.suggest.insertMode": "replace"
+  },
+  "[yaml]": {
+    "editor.autoIndent": "keep",
+    "diffEditor.ignoreTrimWhitespace": false,
+    "editor.defaultColorDecorators": "never",
+    "editor.quickSuggestions": {
+      "other": true,
+      "comments": false,
+      "strings": true
+    }
+  },
+  "yaml.schemas": {
+    "https://json.schemastore.org/clang-format.json": ".clang-format",
+    "https://json.schemastore.org/clang-tidy.json": ".clang-tidy",
+    "https://json.schemastore.org/clangd.json": ".clangd"
+  },
+  "clangd.arguments": [
+    "--compile-commands-dir=${workspaceFolder}"
+  ],
+  "clangd.fallbackFlags": [
+    "-xc++"
+  ],
+  "makefile.configureOnOpen": true,
+  "makefile.configureAfterCommand": true,
+  "makefile.configureOnEdit": true,
+  "makefile.extensionOutputFolder": "${workspaceFolder}/.makecache",
+  "makefile.compileCommandsPath": "${workspaceFolder}/compile_commands.json",
+  "makefile.alwaysPreConfigure": true,
+  "makefile.preConfigureScript": "${workspaceFolder}/.vscode/export.sh",
+  "makefile.configurations": [
+    {
+      "name": "Apple Clang",
+      "makeArgs": [
+        "--jobs=4"
+      ],
+      "preConfigureArgs": [
+        "LDFLAGS='-flto=thin -Wl,-mllvm,-threads=4 -Wl,-cache_path_lto,.llvmcache'",
+        "CXXFLAGS='-glldb -flto=thin'"
+      ]
     },
-    "[cpp]": {
-        "editor.formatOnSave": true,
-        "editor.insertSpaces": false,
-        "editor.tabSize": 2,
-        "editor.detectIndentation": false,
-        "editor.codeActionsOnSave": {
-            "source.fixAll": "explicit"
-        }
-    },
-    "[yaml]": {
-        "editor.formatOnSave": true,
-        "editor.insertSpaces": true,
-        "editor.tabSize": 2,
-        "editor.autoIndent": "keep",
-        "diffEditor.ignoreTrimWhitespace": false,
-        "editor.defaultColorDecorators": "never",
-        "editor.quickSuggestions": {
-            "other": true,
-            "comments": false,
-            "strings": true
-        }
-    },
-    "yaml.schemas": {
-        "https://json.schemastore.org/clang-format.json": ".clang-format",
-        "https://json.schemastore.org/clang-tidy.json": ".clang-tidy",
-        "https://json.schemastore.org/clangd.json": ".clangd"
-    },
-    "clangd.arguments": [
-        "--compile-commands-dir=${workspaceFolder}"
-    ],
-    "clangd.fallbackFlags": [
-        "-xc++"
-    ],
-    "makefile.compileCommandsPath": "${workspaceFolder}/compile_commands.json"
+    {
+      "name": "Clang",
+      "makeArgs": [
+        "--jobs=4"
+      ],
+      "preConfigureArgs": [
+        "LDFLAGS='-Wl,--gdb-index -flto=thin -Wl,--thinlto-jobs=4 -Wl,-cache_path_lto,.llvmcache'",
+        "CXXFLAGS='-glldb -gsplit-dwarf -flto=thin'"
+      ]
+    }
+  ]
 }
