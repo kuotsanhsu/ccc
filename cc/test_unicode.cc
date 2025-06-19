@@ -42,4 +42,22 @@ static_assert(test(u8"\xED\x95\x9C\xEA\xB5\xAD\xEC\x96\xB4"sv, {0xD55C, 0xAD6D, 
 static_assert(test(u8"\xE6\x97\xA5\xE6\x9C\xAC\xE8\xAA\x9E"sv, {0x65E5, 0x672C, 0x8A9E}));
 static_assert(test(u8"\xEF\xBB\xBF\xF0\xA3\x8E\xB4"sv, {0xFEFF, 0x2'33B4}));
 
-int main() {}
+constexpr auto operator""_kb(unsigned long long x) noexcept { return x << 10; }
+static_assert(3_kb == 3072);
+static_assert(1_kb != 3);
+
+int main() {
+  unsigned char x = 255;
+  signed char y = x;
+  int a = x;
+  int b = y;
+  assert(a == 255);
+  assert(b == -1);
+  const auto not_l = [](int x) { return x != 'l'; };
+  constexpr auto temp_view = u8"hello world"sv | to_codepoint;
+  constexpr auto ops = std::views::take(7) | std::views::drop(1) | std::views::filter(not_l);
+  static_assert(std::ranges::equal(temp_view | ops, U"eo w"sv));
+  std::ranges::filter_view(
+      std::ranges::drop_view(std::ranges::take_view(codepoint_view(u8"hello world"sv), 7), 1),
+      not_l);
+}
