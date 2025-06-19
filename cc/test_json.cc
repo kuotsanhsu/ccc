@@ -2,14 +2,13 @@
 #include <algorithm>
 #include <iostream>
 
-template <utf8_code_unit_sequence R>
-constexpr bool test_visitor(R &&source, json_visitor *visitor) {
-  return json_parser(std::forward<R>(source) | to_codepoint, visitor).lex_json_text() == -1;
+constexpr bool test_visitor(utf8_code_unit_sequence auto &&source, json_visitor *visitor) {
+  return json_parser(source | to_codepoint, visitor).lex_json_text() == -1;
 }
 
-template <utf8_code_unit_sequence R> constexpr bool test(R &&source) {
+constexpr bool test(utf8_code_unit_sequence auto &&source) {
   json_visitor visitor;
-  return test_visitor(std::forward<R>(source), &visitor);
+  return test_visitor(source, &visitor);
 }
 
 using namespace std::string_view_literals;
@@ -30,47 +29,15 @@ static_assert(std::size(file2) == 485);
 static_assert(test(std::views::all(file1)));
 static_assert(test(std::views::all(file2)));
 
-template <utf8_code_unit_sequence R> constexpr bool repeated_parse(R &&source, int repetitions) {
+constexpr bool repeated_parse(utf8_code_unit_sequence auto &&source, int repetitions) {
   json_visitor visitor;
-  json_parser parser(std::forward<R>(source) | to_codepoint, &visitor);
+  json_parser parser(source | to_codepoint, &visitor);
   const auto rets = std::views::iota(0, repetitions) |
                     std::views::transform([&parser](int) { return parser.lex_json_text(); });
   return std::ranges::all_of(rets, [](int ret) { return ret == -1; });
 }
 
 static_assert(repeated_parse(std::views::all(file1), 3));
-
-constexpr std::u8string_view image = // clang-format off
-		u8"{"
-			"Image\xFF" "{"
-				"Width\xFF" "800"
-			"\0"
-				"Height\xFF" "600"
-			"\0"
-				"Title\xFF" "\"View from 15th Floor\xFF"
-			"\0"
-				"Thumbnail\xFF" "{"
-					"Url\xFF" "\"http://www.example.com/image/481989943\xFF"
-				"\0"
-					"Height\xFF" "125"
-				"\0"
-					"Width\xFF" "100"
-				"\1"
-			"\0"
-				"Animated\xFF" "f"
-			"\0"
-				"IDs\xFF" "["
-					"116"
-				"\0"
-					"943"
-				"\0"
-					"234"
-				"\0"
-					"38793"
-				"\1"
-			"\1"
-		"\1"
-	; // clang-format on
 
 struct diagnostic_json_visitor : json_visitor {
   constexpr void bom() final { assert(false); }

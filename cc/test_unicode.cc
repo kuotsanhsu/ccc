@@ -6,8 +6,8 @@ static_assert(std::ranges::input_range<codepoint_view<std::u8string_view>>);
 static_assert(std::input_iterator<codepoint_view<std::u8string_view>::iterator>);
 static_assert(codepoint_sequence<codepoint_view<std::u8string_view>>);
 
-template <utf8_code_unit_sequence T, std::ranges::input_range U = std::initializer_list<int>>
-constexpr bool test(T &&code_units, U &&codepoints) {
+template <codepoint_sequence U = std::initializer_list<int>>
+constexpr bool test(utf8_code_unit_sequence auto &&code_units, U &&codepoints) {
   return std::ranges::equal(code_units | to_codepoint, codepoints);
 }
 
@@ -15,10 +15,9 @@ constexpr bool test(T &&code_units, U &&codepoints) {
  * 3-7](https://www.unicode.org/versions/Unicode16.0.0/core-spec/chapter-3/#G27506), the following
  * byte values are disallowed in UTF-8: C0–C1, F5–FF.
  */
-template <utf8_code_unit_sequence R> constexpr bool disallowed_byte_range(R &&code_units) {
+constexpr bool disallowed_byte_range(utf8_code_unit_sequence auto &&code_units) {
   constexpr auto disallowed_byte = [](char8_t code_unit) {
-    const char8_t singleton[] = {code_unit};
-    return test(std::views::all(singleton), {-3});
+    return test(std::initializer_list{code_unit}, {-3});
   };
   return std::ranges::all_of(code_units | std::views::transform(disallowed_byte), std::identity{});
 }
@@ -27,7 +26,7 @@ static_assert(disallowed_byte_range(std::views::iota(u8'\xC0', u8'\xC2')));
 static_assert(disallowed_byte_range(std::views::iota(u8'\xF5', u8'\x00')));
 
 using namespace std::string_view_literals;
-static_assert(test(u8"hello world"sv, U"hello world"sv));
+static_assert(test(u8"hello world"sv, {'h', 'e', 'l', 'l', 'o', ' ', 'w', 'o', 'r', 'l', 'd'}));
 
 static_assert(test(u8"\x41\xC3\xB1\x42"sv, {0x41, 0xF1, 0x42}));
 static_assert(test(u8"\x41\xC2\xC3\xB1\x42"sv, {0x41, -3, 0xF1, 0x42}));

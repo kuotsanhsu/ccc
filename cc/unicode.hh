@@ -153,9 +153,7 @@ template <utf8_code_unit_sequence R> constexpr int codepoint_view<R>::iterator::
 }
 
 constexpr inline struct to_codepoint : std::ranges::range_adaptor_closure<to_codepoint> {
-  template <std::ranges::input_range R>
-    requires std::same_as<std::ranges::range_value_t<R>, char8_t>
-  [[nodiscard]] constexpr auto operator()(R &&code_units) const {
-    return codepoint_view(std::forward<R>(code_units));
+  [[nodiscard]] constexpr auto operator()(utf8_code_unit_sequence auto &&code_units) const {
+    return codepoint_view(code_units);
   }
 } to_codepoint;
