@@ -4,7 +4,7 @@
 .SUFFIXES:
 
 vpath %.hpp include
-cpps := $(wildcard unicode/*.cpp json/*.cpp)
+cpps := $(wildcard unicode/*.cpp json/*.cpp chess/*.cpp)
 -include $(cpps:.cpp=.d)
 CXXFLAGS += @compile_flags.txt
 CPPFLAGS += -MMD -MP
@@ -16,13 +16,16 @@ CPPFLAGS += -MMD -MP
 
 .PHONY: clean all
 clean:
-	rm -fr $(tests) {unicode,json}/*.{o,d,dSYM} compile_commands.json
+	rm -fr $(tests) {unicode,json,chess}/*.{o,d,dSYM} compile_commands.json
 all:
 
-test_cpps := $(wildcard unicode/test_*.cpp json/test_*.cpp)
+test_cpps := $(wildcard unicode/test_*.cpp json/test_*.cpp chess/test_*.cpp)
 tests := $(test_cpps:.cpp=)
 checks := $(tests:%=check/%)
 .PHONY: check $(checks)
 check: $(checks)
 $(checks): check/%: %
+	$^
+
+play_chess: chess/main
 	$^
