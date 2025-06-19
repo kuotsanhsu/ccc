@@ -21,8 +21,8 @@ all:
 
 test_cpps := $(wildcard unicode/test_*.cpp json/test_*.cpp)
 tests := $(test_cpps:.cpp=)
-exec_tests := $(tests:%=exec/%)
-.PHONY: test $(exec_tests)
-test: $(exec_tests)
-$(exec_tests): exec/%: %
+checks := $(tests:%=check/%)
+.PHONY: check $(checks)
+check: $(checks)
+$(checks): check/%: %
 	$^
