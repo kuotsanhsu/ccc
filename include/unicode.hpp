@@ -1,5 +1,5 @@
 #pragma once
-#include "assert.hh"
+#include "assert.hpp"
 #include <ranges>
 
 template <typename R, typename T>

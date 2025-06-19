@@ -1,4 +1,5 @@
-#include "unicode.hh"
+#pragma once
+#include "unicode.hpp"
 
 struct json_visitor {
   constexpr virtual ~json_visitor() = default;

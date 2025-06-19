@@ -1,4 +1,1 @@
-*
-!/.gitignore
-!/extensions.json
-!/settings.json
+/launch.json
