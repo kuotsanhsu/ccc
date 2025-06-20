@@ -4,37 +4,44 @@
 #include <iostream>
 #include <termios.h>
 #include <unistd.h>
-#include <utility>
 
-struct colored_piece {
-  piece piece;
-  bool is_white;
-};
+class colored_piece {
+  const char *glyph;
+  ansi::fg fg;
 
-// https://stackoverflow.com/a/8327034
-std::ostream &operator<<(std::ostream &os, const colored_piece &cp) {
-  const std::array fgcolors{
-      ansi::sgr(ansi::fg::bright(ansi::color::green)),
-      ansi::sgr(ansi::fg::bright(ansi::color::white)),
+  static constexpr std::array fgcolors{
+      ansi::fg::bright(ansi::color::green),
+      ansi::fg::bright(ansi::color::white),
   };
-  const auto fgcolor = fgcolors[cp.is_white];
-  switch (cp.piece) {
-  case piece::empty:
-    return os << fgcolor << "　";
-  case piece::pawn:
-    return os << fgcolor << (cp.is_white ? "Ｐ" : "ｐ");
-  case piece::rook:
-    return os << fgcolor << (cp.is_white ? "Ｒ" : "ｒ");
-  case piece::knight:
-    return os << fgcolor << (cp.is_white ? "Ｎ" : "ｎ");
-  case piece::bishop:
-    return os << fgcolor << (cp.is_white ? "Ｂ" : "ｂ");
-  case piece::queen:
-    return os << fgcolor << (cp.is_white ? "Ｑ" : "ｑ");
-  case piece::king:
-    return os << fgcolor << (cp.is_white ? "Ｋ" : "ｋ");
+
+  // [Full-width characters](https://stackoverflow.com/a/8327034)
+  static constexpr const char *full_width_latin(const piece piece, const bool is_white) noexcept {
+    switch (piece) {
+    case piece::empty:
+      return "　";
+    case piece::pawn:
+      return is_white ? "Ｐ" : "ｐ";
+    case piece::rook:
+      return is_white ? "Ｒ" : "ｒ";
+    case piece::knight:
+      return is_white ? "Ｎ" : "ｎ";
+    case piece::bishop:
+      return is_white ? "Ｂ" : "ｂ";
+    case piece::queen:
+      return is_white ? "Ｑ" : "ｑ";
+    case piece::king:
+      return is_white ? "Ｋ" : "ｋ";
+    }
   }
-}
+
+public:
+  constexpr colored_piece(const piece piece, const bool is_white) noexcept
+      : glyph(full_width_latin(piece, is_white)), fg(fgcolors[is_white]) {}
+
+  friend std::ostream &operator<<(std::ostream &os, const colored_piece &cp) {
+    return os << cp.fg << cp.glyph;
+  }
+};
 
 // https://askubuntu.com/a/558422
 std::ostream &operator<<(std::ostream &os, const configuration &config) {
@@ -51,27 +58,26 @@ std::ostream &operator<<(std::ostream &os, const configuration &config) {
     board[~shift] = piece;
   }
   constexpr auto file_hint{"　ａｂｃｄｅｆｇｈ　"};
-  const auto bgcolors = std::views::repeat(std::array{
-                            ansi::bg::bright(ansi::color::blue),
-                            ansi::bg(ansi::color::blue),
-                        }) |
-                        std::views::join;
+  constexpr auto bgcolors = std::views::repeat(std::array{
+                                ansi::bg::bright(ansi::color::blue),
+                                ansi::bg(ansi::color::blue),
+                            }) |
+                            std::views::join;
   auto bgcolor = std::ranges::begin(bgcolors);
-  const auto hint_color = ansi::sgr(0, ansi::fg::bright(ansi::color::black));
+  constexpr auto hint_color = ansi::sgr(ansi::style::reset, ansi::fg::bright(ansi::color::black));
   os << hint_color << file_hint << "\r\n";
   auto pos = uint64_t{1} << ~square{0};
   auto square = board.cbegin();
   for (const auto rank : {"８", "７", "６", "５", "４", "３", "２", "１"}) {
     os << rank;
     for (const auto _ : std::views::iota(0, 8)) {
-      os << ansi::sgr(*bgcolor++)
-         << colored_piece(*square++, pos & config.get_white().get_occupancy());
+      os << *bgcolor++ << colored_piece(*square++, pos & config.get_white().get_occupancy());
       pos >>= 1;
     }
     os << hint_color << rank << "\r\n";
     ++bgcolor;
   }
-  return os << file_hint << ansi::reset;
+  return os << file_hint << ansi::style::reset;
 }
 
 // Note that tcsetattr() returns success if any of the requested changes could be successfully

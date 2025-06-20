@@ -1,9 +1,6 @@
 #pragma once
-#include <algorithm>
-#include <charconv>
 #include <ostream>
-#include <string>
-#include <vector>
+#include <utility>
 
 namespace ansi {
 
@@ -49,57 +46,62 @@ constexpr auto clear_screen{"\033[2J"};
 constexpr auto hard_clear_screen{"\033[3J\033c"};
 constexpr auto clear_line{"\033[2K"};
 
-constexpr auto reset{"\033[m"};
-// The control sequence `CSI n m`, named Select Graphic Rendition (SGR), sets display attributes.
-#define SGR(n) ("\033[" n "m")
-constexpr auto bold = SGR("1");
-constexpr auto increased_intensity = bold;
-constexpr auto faint = SGR("2");
-constexpr auto decreased_intensity = faint;
-constexpr auto italic = SGR("3");
-constexpr auto underline = SGR("4");
-constexpr auto slow_blink = SGR("5");
-constexpr auto blink = slow_blink;
-constexpr auto rapid_blink = SGR("6");
-constexpr auto invert = SGR("7");
-constexpr auto conceal = SGR("8");
-constexpr auto crossed_out = SGR("9");
-constexpr auto strike = crossed_out;
-constexpr auto primary_font = SGR("10");
-constexpr auto fraktur = SGR("20");
-constexpr auto gothic = fraktur;
-constexpr auto doubly_underlined = SGR("21");
-constexpr auto normal_intensity = SGR("22");
-constexpr auto not_italic_nor_blackletter = SGR("23");
-// Neither singly nor doubly underlined
-constexpr auto no_underlined = SGR("24");
-constexpr auto not_blinking = SGR("25");
-constexpr auto proportional_spacing = SGR("26");
-constexpr auto not_reversed = SGR("27");
-constexpr auto reveal = SGR("28");
-constexpr auto not_concealed = reveal;
-constexpr auto not_crossed_out = SGR("29");
-
-#undef SGR
+enum class style {
+  reset = 0,
+  normal = reset,
+  bold = 1,
+  increased_intensity = 1,
+  faint = 2,
+  decreased_intensity = faint,
+  italic = 3,
+  underline = 4,
+  slow_blink = 5,
+  blink = slow_blink,
+  rapid_blink = 6,
+  invert = 7,
+  conceal = 8,
+  crossed_out = 9,
+  strike = crossed_out,
+  primary_font = 10,
+  fraktur = 20,
+  gothic = fraktur,
+  doubly_underlined = 21,
+  normal_intensity = 22,
+  not_italic_nor_blackletter = 23,
+  // Neither singly nor doubly underlined
+  no_underlined = 24,
+  not_blinking = 25,
+  proportional_spacing = 26,
+  not_reversed = 27,
+  reveal = 28,
+  not_concealed = reveal,
+  not_crossed_out = 29,
+};
 
 enum class color : char { black = '0', red, green, yellow, blue, magenta, cyan, white };
 
-using namespace std::string_literals;
+class fg;
+class bg;
+
+template <typename T>
+concept sgr_value_t = std::same_as<T, style> || std::same_as<T, fg> || std::same_as<T, bg>;
+
+template <sgr_value_t... Ts> class sgr;
+
 using namespace std::string_view_literals;
 
 class fg {
-  char sequence[17];
+  char sequence[17]{};
+
+  template <sgr_value_t... Ts> friend class sgr;
 
 public:
-  constexpr operator auto() const noexcept { return sequence; }
-
   static constexpr fg bright(const enum color color) noexcept { return {color, true}; }
 
   constexpr fg(const enum color color, const bool bright = false) noexcept {
     auto ch = std::begin(sequence);
     *ch++ = bright ? '9' : '3';
     *ch++ = std::to_underlying(color);
-    *ch++ = '\0';
   }
 
   // 256 color
@@ -107,7 +109,6 @@ public:
     auto ch = std::begin(sequence);
     ch = std::ranges::copy("38;5;"sv, ch).out;
     ch = std::to_chars(ch, ch + 3, color).ptr;
-    *ch = '\0';
   }
 
   // true color
@@ -119,23 +120,21 @@ public:
     ch = std::to_chars(ch, ch + 3, green).ptr;
     *ch++ = ';';
     ch = std::to_chars(ch, ch + 3, blue).ptr;
-    *ch = '\0';
   }
 };
 
 class bg {
-  char sequence[17];
+  char sequence[17]{};
+
+  template <sgr_value_t... Ts> friend class sgr;
 
 public:
-  constexpr operator auto() const { return sequence; }
-
   static constexpr bg bright(const enum color color) noexcept { return {color, true}; }
 
   constexpr bg(const enum color color, const bool bright = false) noexcept {
     auto ch = std::begin(sequence);
     ch = std::ranges::copy(bright ? "10"sv : "4"sv, ch).out;
     *ch++ = std::to_underlying(color);
-    *ch++ = '\0';
   }
 
   // 256 color
@@ -143,7 +142,6 @@ public:
     auto ch = std::begin(sequence);
     ch = std::ranges::copy("48;5;"sv, ch).out;
     ch = std::to_chars(ch, ch + 3, color).ptr;
-    *ch = '\0';
   }
 
   // true color
@@ -155,39 +153,33 @@ public:
     ch = std::to_chars(ch, ch + 3, green).ptr;
     *ch++ = ';';
     ch = std::to_chars(ch, ch + 3, blue).ptr;
-    *ch = '\0';
   }
 };
 
-template <typename T>
-concept sgr_value_t = std::same_as<T, int> || std::same_as<T, fg> || std::same_as<T, bg>;
-
 template <sgr_value_t... Ts> class sgr {
   std::tuple<Ts...> vs;
-
-  template <size_t I>
-    requires(I >= sizeof...(Ts))
-  std::ostream &print(std::ostream &os) const {
-    return os << 'm';
-  }
-
-  template <size_t I>
-    requires(I < sizeof...(Ts))
-  std::ostream &print(std::ostream &os) const {
-    if constexpr (I != 0) {
-      os << ';';
-    }
-    os << std::get<I>(vs);
-    return print<I + 1>(os);
-  }
 
 public:
   constexpr sgr(const Ts &...args) noexcept : vs(args...) {}
 
   friend std::ostream &operator<<(std::ostream &os, const sgr &sgr) {
-    os << "\033[";
-    return sgr.print<0>(os);
+    os << "\033";
+    return [&os, &sgr]<auto... Is>(std::index_sequence<Is...>) constexpr -> std::ostream & {
+      constexpr auto print = []<typename V>(const V &v) {
+        if constexpr (std::same_as<V, style>) {
+          return std::to_underlying(v);
+        } else if constexpr (std::same_as<V, fg> || std::same_as<V, bg>) {
+          return v.sequence;
+        }
+        std::unreachable();
+      };
+      return ((os << (Is ? ';' : '[') << print(std::get<Is>(sgr.vs))), ...);
+    }(std::index_sequence_for<Ts...>{}) << 'm';
   }
 };
+
+template <sgr_value_t V> std::ostream &operator<<(std::ostream &os, const V &v) {
+  return os << sgr(v);
+}
 
 } // namespace ansi
