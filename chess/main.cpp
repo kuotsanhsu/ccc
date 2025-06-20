@@ -4,6 +4,7 @@
 #include <iostream>
 #include <termios.h>
 #include <unistd.h>
+#include <utility>
 
 struct colored_piece {
   piece piece;
@@ -12,9 +13,9 @@ struct colored_piece {
 
 // https://stackoverflow.com/a/8327034
 std::ostream &operator<<(std::ostream &os, const colored_piece &cp) {
-  constexpr std::array fgcolors{
-      ansi::foreground_bright(ansi::color::green),
-      ansi::foreground_bright(ansi::color::white),
+  const std::array fgcolors{
+      ansi::sgr(ansi::fg::bright(ansi::color::green)),
+      ansi::sgr(ansi::fg::bright(ansi::color::white)),
   };
   const auto fgcolor = fgcolors[cp.is_white];
   switch (cp.piece) {
@@ -37,29 +38,34 @@ std::ostream &operator<<(std::ostream &os, const colored_piece &cp) {
 
 // https://askubuntu.com/a/558422
 std::ostream &operator<<(std::ostream &os, const configuration &config) {
-  std::array<piece, 64> board;
-  std::ranges::fill(board, piece::empty);
+  static_assert(std::to_underlying(piece::empty) == 0);
+  std::array<piece, 64> board{};
+  static_assert(~square{0} == 63);
+  static_assert(~square{1} == 0b111'110);
+  static_assert(~square{0b100'110} == 0b011'001);
+  static_assert(~square{63} == 0);
   for (const auto [piece, shift] : config.get_white()) {
-    board[63 ^ shift] = piece;
+    board[~shift] = piece;
   }
   for (const auto [piece, shift] : config.get_black()) {
-    board[63 ^ shift] = piece;
+    board[~shift] = piece;
   }
   constexpr auto file_hint{"　ａｂｃｄｅｆｇｈ　"};
-  constexpr auto bgcolors = std::views::repeat(std::array{
-                                ansi::background_bright(ansi::color::blue),
-                                ansi::background_dark(ansi::color::blue),
-                            }) |
-                            std::views::join;
+  const auto bgcolors = std::views::repeat(std::array{
+                            ansi::bg::bright(ansi::color::blue),
+                            ansi::bg(ansi::color::blue),
+                        }) |
+                        std::views::join;
   auto bgcolor = std::ranges::begin(bgcolors);
-  constexpr auto hint_color{"\033[0;49;90m"};
+  const auto hint_color = ansi::sgr(0, ansi::fg::bright(ansi::color::black));
   os << hint_color << file_hint << "\r\n";
+  auto pos = uint64_t{1} << ~square{0};
   auto square = board.cbegin();
-  auto pos = uint64_t{1} << 63;
   for (const auto rank : {"８", "７", "６", "５", "４", "３", "２", "１"}) {
     os << rank;
     for (const auto _ : std::views::iota(0, 8)) {
-      os << *bgcolor++ << colored_piece(*square++, pos & config.get_white().get_occupancy());
+      os << ansi::sgr(*bgcolor++)
+         << colored_piece(*square++, pos & config.get_white().get_occupancy());
       pos >>= 1;
     }
     os << hint_color << rank << "\r\n";

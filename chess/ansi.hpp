@@ -1,11 +1,10 @@
 #pragma once
+#include <algorithm>
 #include <charconv>
+#include <ostream>
 #include <string>
+#include <vector>
 
-// The escape character, '\033', followed by
-// the control sequence introducer (CSI), '[', followed by
-// parameters separated by ';', followed by
-// a command character.
 namespace ansi {
 
 // Rows and columns are 1-based.
@@ -83,49 +82,112 @@ constexpr auto not_crossed_out = SGR("29");
 
 #undef SGR
 
-namespace impl {
+enum class color : char { black = '0', red, green, yellow, blue, magenta, cyan, white };
 
-// FG   BG  Name
-// 30   40  Black  rgb(0, 0, 0)
-// 31   41  Red    rgb(170, 0, 0)
-// 32   42  Green  rgb(0, 170, 0)
-// 33   43  Yellow rgb(170, 85, 0)
-// 34   44  Blue   rgb(0, 0, 170)
-// 35   45  Magenta  rgb(170, 0, 170)
-// 36   46  Cyan   rgb(0, 170, 170)
-// 37   47  White  rgb(170, 170, 170)
-// 90  100  Bright Black (Gray) rgb(85, 85, 85)
-// 91  101  Bright Red
-// 92  102  Bright Green	rgb(85, 255, 85)
-// 93  103  Bright Yellow  rgb(255, 255, 85)
-// 94  104  Bright Blue  rgb(85, 85, 255)
-// 95  105  Bright Magenta rgb(255, 85, 255)
-// 96  106  Bright Cyan    rgb(85, 255, 255)
-// 97  107  Bright White  rgb(255, 255, 255)
-constexpr std::string color(const uint8_t c) {
-  char array[] = "\033[NNNm";
-  auto first = std::begin(array) + 2;
-  const auto last = std::end(array);
-  first = std::to_chars(first, last, c).ptr;
-  *first++ = 'm';
-  *first = '\0';
-  return array;
-}
+using namespace std::string_literals;
+using namespace std::string_view_literals;
 
-} // namespace impl
+class fg {
+  char sequence[17];
 
-enum class color { black, red, green, yellow, blue, magenta, cyan, white };
+public:
+  constexpr operator auto() const noexcept { return sequence; }
 
-constexpr auto foreground(const color c, const bool bright) {
-  return impl::color(std::to_underlying(c) + (bright ? 90 : 30));
-}
-constexpr auto foreground_dark(const color c) { return foreground(c, false); }
-constexpr auto foreground_bright(const color c) { return foreground(c, true); }
+  static constexpr fg bright(const enum color color) noexcept { return {color, true}; }
 
-constexpr auto background(const color c, const bool bright) {
-  return impl::color(std::to_underlying(c) + (bright ? 40 : 100));
-}
-constexpr auto background_dark(const color c) { return background(c, false); }
-constexpr auto background_bright(const color c) { return background(c, true); }
+  constexpr fg(const enum color color, const bool bright = false) noexcept {
+    auto ch = std::begin(sequence);
+    *ch++ = bright ? '9' : '3';
+    *ch++ = std::to_underlying(color);
+    *ch++ = '\0';
+  }
+
+  // 256 color
+  constexpr fg(const uint8_t color) noexcept {
+    auto ch = std::begin(sequence);
+    ch = std::ranges::copy("38;5;"sv, ch).out;
+    ch = std::to_chars(ch, ch + 3, color).ptr;
+    *ch = '\0';
+  }
+
+  // true color
+  constexpr fg(const uint8_t red, const uint8_t green, const uint8_t blue) noexcept {
+    auto ch = std::begin(sequence);
+    ch = std::ranges::copy("38;2;"sv, ch).out;
+    ch = std::to_chars(ch, ch + 3, red).ptr;
+    *ch++ = ';';
+    ch = std::to_chars(ch, ch + 3, green).ptr;
+    *ch++ = ';';
+    ch = std::to_chars(ch, ch + 3, blue).ptr;
+    *ch = '\0';
+  }
+};
+
+class bg {
+  char sequence[17];
+
+public:
+  constexpr operator auto() const { return sequence; }
+
+  static constexpr bg bright(const enum color color) noexcept { return {color, true}; }
+
+  constexpr bg(const enum color color, const bool bright = false) noexcept {
+    auto ch = std::begin(sequence);
+    ch = std::ranges::copy(bright ? "10"sv : "4"sv, ch).out;
+    *ch++ = std::to_underlying(color);
+    *ch++ = '\0';
+  }
+
+  // 256 color
+  constexpr bg(const uint8_t color) noexcept {
+    auto ch = std::begin(sequence);
+    ch = std::ranges::copy("48;5;"sv, ch).out;
+    ch = std::to_chars(ch, ch + 3, color).ptr;
+    *ch = '\0';
+  }
+
+  // true color
+  constexpr bg(const uint8_t red, const uint8_t green, const uint8_t blue) noexcept {
+    auto ch = std::begin(sequence);
+    ch = std::ranges::copy("48;2;"sv, ch).out;
+    ch = std::to_chars(ch, ch + 3, red).ptr;
+    *ch++ = ';';
+    ch = std::to_chars(ch, ch + 3, green).ptr;
+    *ch++ = ';';
+    ch = std::to_chars(ch, ch + 3, blue).ptr;
+    *ch = '\0';
+  }
+};
+
+template <typename T>
+concept sgr_value_t = std::same_as<T, int> || std::same_as<T, fg> || std::same_as<T, bg>;
+
+template <sgr_value_t... Ts> class sgr {
+  std::tuple<Ts...> vs;
+
+  template <size_t I>
+    requires(I >= sizeof...(Ts))
+  std::ostream &print(std::ostream &os) const {
+    return os << 'm';
+  }
+
+  template <size_t I>
+    requires(I < sizeof...(Ts))
+  std::ostream &print(std::ostream &os) const {
+    if constexpr (I != 0) {
+      os << ';';
+    }
+    os << std::get<I>(vs);
+    return print<I + 1>(os);
+  }
+
+public:
+  constexpr sgr(const Ts &...args) noexcept : vs(args...) {}
+
+  friend std::ostream &operator<<(std::ostream &os, const sgr &sgr) {
+    os << "\033[";
+    return sgr.print<0>(os);
+  }
+};
 
 } // namespace ansi
