@@ -1,21 +1,19 @@
 #pragma once
 #include <ostream>
-#include <utility>
 
 namespace ansi {
 
 // Rows and columns are 1-based.
-constexpr std::string cursor_position(const uint8_t row, const uint8_t col) {
-  char array[] = "\033[row;colH";
-  auto first = std::begin(array) + 2;
-  const auto last = std::end(array);
-  first = std::to_chars(first, last, row).ptr;
-  *first++ = ';';
-  first = std::to_chars(first, last, col).ptr;
-  *first++ = 'H';
-  *first = '\0';
-  return array;
-}
+class cursor_position {
+  int row, col;
+
+public:
+  constexpr cursor_position(const int row, const int col) noexcept : row(row), col(col) {}
+
+  friend std::ostream &operator<<(std::ostream &os, const cursor_position &position) {
+    return os << "\033[" << position.row << ';' << position.col << 'H';
+  }
+};
 
 namespace impl {
 

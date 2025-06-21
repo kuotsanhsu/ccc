@@ -118,26 +118,33 @@ void noecho() {
   }
 }
 
+struct coordinates {
+  int file, rank;
+};
+
+std::ostream &operator<<(std::ostream &os, const coordinates &coord) {
+  return os << ansi::cursor_position(10 - coord.rank, coord.file * 2 + 1);
+}
+
 void loop() {
-  int file = 0, rank = 0, col = 0;
+  coordinates coord(0, 0);
   for (char ch = '\0'; read(STDIN_FILENO, &ch, 1) == 1;) {
     if ('a' <= ch && ch <= 'h') {
-      if (rank == 0) {
-        file = ch - 'a' + 1;
-        col = file * 2 + 1;
-        std::cout << ansi::cursor_show << ansi::cursor_position(10, col) << std::flush;
+      if (coord.rank == 0) {
+        coord.file = ch - 'a' + 1;
+        std::cout << ansi::cursor_show << coord << std::flush;
       }
     } else if ('1' <= ch && ch <= '8') {
-      if (file != 0) {
-        rank = ch - '1' + 1;
-        std::cout << ansi::cursor_position(10 - rank, col) << std::flush;
+      if (coord.file != 0) {
+        coord.rank = ch - '1' + 1;
+        std::cout << coord << std::flush;
       }
     } else {
       switch (ch) {
       case '\n':
         break;
       case '\033':
-        file = rank = 0;
+        coord.file = coord.rank = 0;
         std::cout << ansi::cursor_hide << std::flush;
         break;
       }
