@@ -1,3 +1,4 @@
+MAKEFLAGS += --no-builtin-rules
 .DEFAULT_GOAL := all
 .DELETE_ON_ERROR:
 .SECONDARY: # https://stackoverflow.com/a/15191011
@@ -16,7 +17,7 @@ CPPFLAGS += -MMD -MP
 
 .PHONY: clean all
 clean:
-	rm -fr $(tests) {unicode,json,chess}/*.{o,d,dSYM} compile_commands.json
+	rm -fr $(tests) {unicode,json,chess}/*.{o,d,dSYM} compile_commands.json chess/main
 all:
 
 test_cpps := $(wildcard unicode/test_*.cpp json/test_*.cpp chess/test_*.cpp)

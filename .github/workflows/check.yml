@@ -1,0 +1,15 @@
+on:
+  pull_request:
+    branches:
+      - main
+jobs:
+  check:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: macos-15-arm64, cxx: c++ }
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - run: CXX=${{ matrix.cxx }} make check

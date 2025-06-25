@@ -4,4 +4,4 @@
 -Werror
 -Wpointer-arith
 -Wimplicit-fallthrough
--Wno-c23-extensions
+-Wno-c2x-extensions
