@@ -1,8 +1,9 @@
 {
-    "recommendations": [
-        "llvm-vs-code-extensions.lldb-dap",
-        "llvm-vs-code-extensions.vscode-clangd",
-        "ms-vscode.makefile-tools",
-        "redhat.vscode-yaml"
-    ]
+  "recommendations": [
+    "github.vscode-github-actions",
+    "llvm-vs-code-extensions.lldb-dap",
+    "llvm-vs-code-extensions.vscode-clangd",
+    "ms-vscode.makefile-tools",
+    "redhat.vscode-yaml"
+  ]
 }
