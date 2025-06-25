@@ -1,0 +1,7 @@
+-Iinclude
+-std=c++23
+-fno-exceptions
+-Werror
+-Wpointer-arith
+-Wimplicit-fallthrough
+-Wno-c23-extensions
