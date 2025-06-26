@@ -36,12 +36,13 @@ constexpr std::vector<std::vector<int>> scc(const std::span<Vertex> vertices) {
     for (auto w : v->successors) {
       if (!w->visited()) {
         self(w);
-        v->min_lowlink(*w);
-      } else if (w->onStack()) {
-        // Successor w is in stack S and hence in the current SCC. If w is not on stack, then (v, w)
-        // is an edge pointing to an SCC already found and must be ignored.
-        v->min_lowlink(*w);
       }
+      if (!w->onStack()) {
+        // (v, w) is an edge pointing to an SCC already found and must be ignored.
+        continue;
+      }
+      // Successor w is in stack S and hence in the current SCC.
+      v->min_lowlink(*w);
     }
     if (v->root()) {
       std::vector<int> component;
