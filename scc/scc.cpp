@@ -1,5 +1,7 @@
 #include <array>
 #include <iostream>
+#include <iterator>
+#include <ranges>
 #include <span>
 #include <stack>
 #include <tuple>
@@ -8,44 +10,46 @@
 constexpr std::vector<std::vector<int>> scc(const int N,
                                             const std::span<const std::pair<int, int>> edges) {
   // const auto M{edges.size()};
-  struct Vertex {
-    std::vector<Vertex *> successors{};
+  class Vertex {
     int index{-1};
     int lowlink{-1};
+
+  public:
     bool onStack{false};
+    std::vector<Vertex *> successors{};
 
     void visit(const int index) noexcept {
       lowlink = this->index = index;
       onStack = true;
     }
 
+    void min_lowlink(const Vertex &other) { lowlink = std::min(lowlink, other.lowlink); }
+
     [[nodiscard]] bool visited() const noexcept { return index != -1; }
+    [[nodiscard]] bool root() const noexcept { return index == lowlink; }
   };
   std::vector<Vertex> vertices(N);
-  const Vertex *const front = &vertices.front();
   for (const auto [from, to] : edges) {
     vertices[from].successors.push_back(&vertices[to]);
   }
 
   std::stack<Vertex *> S;
   std::vector<std::vector<int>> components;
-  const auto strongconnect = [front, &vertices, &S, &components](this auto &&self,
-                                                                 Vertex *const v) -> void {
+  const auto strongconnect = [front = &vertices.front(), &vertices, &S,
+                              &components](this auto &&self, Vertex *const v) -> void {
     v->visit(S.size());
     S.push(v);
     for (auto w : v->successors) {
       if (!w->visited()) {
-        // Successor w has not yet been visited; recurse on it.
         self(w);
-        v->lowlink = std::min(v->lowlink, w->lowlink);
+        v->min_lowlink(*w);
       } else if (w->onStack) {
         // Successor w is in stack S and hence in the current SCC. If w is not on stack, then (v, w)
         // is an edge pointing to an SCC already found and must be ignored.
-        v->lowlink = std::min(v->lowlink, w->lowlink);
+        v->min_lowlink(*w);
       }
     }
-    // If v is a root node, pop the stack and generate an SCC.
-    if (v->lowlink == v->index) {
+    if (v->root()) {
       std::vector<int> component;
       while (true) {
         const auto w = S.top();
@@ -67,7 +71,23 @@ constexpr std::vector<std::vector<int>> scc(const int N,
   return components;
 }
 
-int main() {
+template <typename R>
+concept nested_sized_ranges =
+    std::ranges::sized_range<R> && std::ranges::sized_range<std::ranges::range_value_t<R>>;
+
+std::ostream &operator<<(std::ostream &os, const nested_sized_ranges auto &&result) {
+  std::cout << std::ranges::size(result) << '\n';
+  for (const auto &component : result) {
+    std::cout << std::ranges::size(component);
+    for (const auto v : component) {
+      std::cout << ' ' << v;
+    }
+    std::cout << '\n';
+  }
+  return os;
+}
+
+void example() {
   constexpr int N{6}, M{7};
   constexpr std::array<std::pair<int, int>, M> edges{
       {{1, 4}, {5, 2}, {3, 0}, {5, 5}, {4, 1}, {0, 3}, {4, 2}},
@@ -79,14 +99,22 @@ int main() {
       std::array{2},
       std::array{3, 0},
   };
-
   const auto result = scc(N, edges);
-  std::cout << result.size() << '\n';
-  for (const auto &component : result) {
-    std::cout << component.size();
-    for (const auto v : component) {
-      std::cout << ' ' << v;
-    }
-    std::cout << '\n';
+  std::cout << std::ranges::reverse_view(result);
+}
+
+int main() {
+  // example();
+  // return 0;
+  std::array<std::pair<int, int>, 500'000> edges;
+  std::istream_iterator<int> ints(std::cin);
+  const auto N = *ints++;
+  const auto M = *ints++;
+  auto last = edges.begin();
+  for (const auto _ : std::views::iota(0, M)) {
+    const auto a = *ints++;
+    const auto b = *ints++;
+    *last++ = {a, b};
   }
+  std::cout << std::ranges::reverse_view(scc(N, {edges.begin(), last}));
 }
