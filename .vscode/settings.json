@@ -55,8 +55,8 @@
         "--jobs=4"
       ],
       "preConfigureArgs": [
-        "LDFLAGS='-flto=thin -Wl,-mllvm,-threads=4 -Wl,-cache_path_lto,.llvmcache'",
-        "CXXFLAGS='-glldb -flto=thin'"
+        "LDFLAGS=''",
+        "CXXFLAGS='-glldb -gsplit-dwarf'"
       ]
     },
     {

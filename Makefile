@@ -30,3 +30,5 @@ $(checks): check/%: %
 
 play_chess: chess/main
 	$^
+
+scc/scc: scc/scc.o
