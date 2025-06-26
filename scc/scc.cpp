@@ -13,30 +13,31 @@ class Vertex {
 public:
   std::vector<Vertex *> successors{};
 
-  void visit(const int index) noexcept {
+  constexpr void visit(const int index) noexcept {
     this->index = -index;
     lowlink = index;
   }
 
-  void min_lowlink(const Vertex &other) { lowlink = std::min(lowlink, other.lowlink); }
-
-  [[nodiscard]] bool visited() const noexcept { return index != 0; }
-  [[nodiscard]] bool root() const noexcept { return -index == lowlink; }
-  [[nodiscard]] bool onStack() const noexcept { return index < 0; }
-  void offStack() noexcept { index = lowlink; }
+  [[nodiscard]] constexpr bool visited() const noexcept { return index != 0; }
+  [[nodiscard]] constexpr bool root() const noexcept { return -index == lowlink; }
+  [[nodiscard]] constexpr bool onStack() const noexcept { return index < 0; }
+  constexpr void offStack() noexcept { index = lowlink; }
+  constexpr void min_lowlink(const Vertex &other) { lowlink = std::min(lowlink, other.lowlink); }
 };
 
-constexpr std::vector<std::vector<int>> scc(const std::span<Vertex> vertices) {
+class tarjan {
+  std::span<Vertex> vertices;
   std::stack<Vertex *> S;
   std::vector<std::vector<int>> components;
-  const auto strongconnect = [front = &vertices.front(), vertices, &S,
-                              &components](this auto &&self, Vertex *const v) -> void {
+
+  constexpr void build_scc(Vertex *const v) {
+    if (v->visited()) {
+      return;
+    }
     S.push(v);
     v->visit(S.size());
     for (auto w : v->successors) {
-      if (!w->visited()) {
-        self(w);
-      }
+      build_scc(w);
       if (!w->onStack()) {
         // (v, w) is an edge pointing to an SCC already found and must be ignored.
         continue;
@@ -50,37 +51,24 @@ constexpr std::vector<std::vector<int>> scc(const std::span<Vertex> vertices) {
         const auto w = S.top();
         S.pop();
         w->offStack();
-        component.push_back(w - front);
+        component.push_back(w - &vertices.front());
         if (v == w) {
           break;
         }
       };
       components.push_back(component);
     }
-  };
-  for (auto &vertex : vertices) {
-    if (!vertex.visited()) {
-      strongconnect(&vertex);
+  }
+
+public:
+  constexpr tarjan(const std::span<Vertex> vertices) noexcept : vertices(vertices) {
+    for (auto &vertex : vertices) {
+      build_scc(&vertex);
     }
   }
-  return components;
-}
 
-template <typename R>
-concept nested_sized_ranges =
-    std::ranges::sized_range<R> && std::ranges::sized_range<std::ranges::range_value_t<R>>;
-
-std::ostream &operator<<(std::ostream &os, const nested_sized_ranges auto &&result) {
-  std::cout << std::ranges::size(result) << '\n';
-  for (const auto &component : result) {
-    std::cout << std::ranges::size(component);
-    for (const auto v : component) {
-      std::cout << ' ' << v;
-    }
-    std::cout << '\n';
-  }
-  return os;
-}
+  [[nodiscard]] constexpr auto scc() const { return std::ranges::reverse_view(components); }
+};
 
 int main() {
   std::cin.tie(nullptr)->sync_with_stdio(false);
@@ -93,5 +81,16 @@ int main() {
     auto &to = vertices[*ints++];
     from.successors.push_back(&to);
   }
-  std::cout << std::ranges::reverse_view(scc({std::begin(vertices), N}));
+
+  tarjan tarjan({std::begin(vertices), N});
+  const auto components = tarjan.scc();
+
+  std::cout << std::ranges::size(components) << '\n';
+  for (const auto &component : components) {
+    std::cout << std::ranges::size(component);
+    for (const auto v : component) {
+      std::cout << ' ' << v;
+    }
+    std::cout << '\n';
+  }
 }
