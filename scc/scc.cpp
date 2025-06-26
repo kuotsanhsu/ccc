@@ -87,25 +87,8 @@ std::ostream &operator<<(std::ostream &os, const nested_sized_ranges auto &&resu
   return os;
 }
 
-void example() {
-  constexpr int N{6}, M{7};
-  constexpr std::array<std::pair<int, int>, M> edges{
-      {{1, 4}, {5, 2}, {3, 0}, {5, 5}, {4, 1}, {0, 3}, {4, 2}},
-  };
-  constexpr int K{4};
-  constexpr std::tuple components{
-      std::array{5},
-      std::array{4, 1},
-      std::array{2},
-      std::array{3, 0},
-  };
-  const auto result = scc(N, edges);
-  std::cout << std::ranges::reverse_view(result);
-}
-
 int main() {
-  // example();
-  // return 0;
+  std::cin.tie(nullptr)->sync_with_stdio(false);
   std::array<std::pair<int, int>, 500'000> edges;
   std::istream_iterator<int> ints(std::cin);
   const auto N = *ints++;
