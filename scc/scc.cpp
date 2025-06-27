@@ -19,16 +19,17 @@ class scc {
   Vertex **component = stack.end();
   size_t K{0};
 
-  constexpr void tarjan(Vertex *const v) {
+  constexpr Vertex **tarjan(Vertex *const v) {
     if (v->rindex) {
-      return;
+      return v->rindex;
     }
     const auto rindex = v->rindex = top;
     *top++ = v;
+    auto min_rindex = rindex;
     for (auto w : v->successors) {
-      tarjan(w);
-      v->rindex = std::min(v->rindex, w->rindex);
+      min_rindex = std::min(min_rindex, tarjan(w));
     }
+    v->rindex = min_rindex;
     if (v->rindex == rindex) {
       const auto last = component;
       for (auto pw = rindex; pw != top; ++pw) {
@@ -38,6 +39,7 @@ class scc {
       top = rindex;
       ++K;
     }
+    return v->rindex;
   }
 
 public:
