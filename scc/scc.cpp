@@ -8,7 +8,7 @@
 constexpr size_t max_size{500'000};
 
 struct Vertex {
-  size_t rindex{0};
+  Vertex **rindex{nullptr};
   std::vector<Vertex *> successors{};
 };
 
@@ -17,32 +17,26 @@ class scc {
   std::array<Vertex *, max_size> stack;
   Vertex **top = stack.begin();
   Vertex **component = stack.end();
-  std::array<size_t, max_size> component_sizes;
-  size_t *szs = component_sizes.end();
+  size_t K{0};
 
   constexpr void tarjan(Vertex *const v) {
     if (v->rindex) {
       return;
     }
+    const auto rindex = v->rindex = top;
     *top++ = v;
-    const auto rindex = v->rindex = top - stack.begin();
     for (auto w : v->successors) {
       tarjan(w);
       v->rindex = std::min(v->rindex, w->rindex);
     }
     if (v->rindex == rindex) {
-      const auto last = top;
-      while (true) {
-        auto w = *--top;
-        w->rindex = max_size;
-        if (v == w) {
-          break;
-        }
+      const auto last = component;
+      for (auto pw = rindex; pw != top; ++pw) {
+        *--component = *pw;
+        (*pw)->rindex = last;
       }
-      *--szs = last - top;
-      for (auto v = top; v != last; ++v) {
-        *--component = *v;
-      }
+      top = rindex;
+      ++K;
     }
   }
 
@@ -54,12 +48,12 @@ public:
   }
 
   friend std::ostream &operator<<(std::ostream &os, const scc &scc) {
-    os << scc.component_sizes.end() - scc.szs << '\n';
-    auto v = scc.component;
-    for (auto sz = scc.szs; sz != scc.component_sizes.end(); ++sz) {
-      os << *sz;
-      for (auto n = *sz; n--; ++v) {
-        os << ' ' << *v - scc.front;
+    os << scc.K << '\n';
+    for (auto v = scc.component; v != scc.stack.end();) {
+      const auto last = (*v)->rindex;
+      os << last - v;
+      while (v != last) {
+        os << ' ' << *v++ - scc.front;
       }
       os << '\n';
     }
