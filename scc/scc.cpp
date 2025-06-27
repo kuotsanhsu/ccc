@@ -6,73 +6,56 @@
 #include <stack>
 #include <vector>
 
-class Vertex {
-  int index{};
-  int lowlink{};
+constexpr size_t max_size{500'000};
 
-public:
+struct Vertex {
+  size_t rindex{0};
   std::vector<Vertex *> successors{};
-
-  constexpr void visit(const int index) noexcept {
-    this->index = -index;
-    lowlink = index;
-  }
-
-  [[nodiscard]] constexpr bool visited() const noexcept { return index != 0; }
-  [[nodiscard]] constexpr bool root() const noexcept { return -index == lowlink; }
-  [[nodiscard]] constexpr bool onStack() const noexcept { return index < 0; }
-  constexpr void offStack() noexcept { index = lowlink; }
-  constexpr void min_lowlink(const Vertex &other) { lowlink = std::min(lowlink, other.lowlink); }
 };
 
-class tarjan {
-  std::span<Vertex> vertices;
+class scc {
+  const Vertex *front;
   std::stack<Vertex *> S;
   std::vector<std::vector<int>> components;
 
-  constexpr void build_scc(Vertex *const v) {
-    if (v->visited()) {
+  constexpr void tarjan(Vertex *const v) {
+    if (v->rindex) {
       return;
     }
     S.push(v);
-    v->visit(S.size());
+    const auto rindex = v->rindex = S.size();
     for (auto w : v->successors) {
-      build_scc(w);
-      if (!w->onStack()) {
-        // (v, w) is an edge pointing to an SCC already found and must be ignored.
-        continue;
-      }
-      // Successor w is in stack S and hence in the current SCC.
-      v->min_lowlink(*w);
+      tarjan(w);
+      v->rindex = std::min(v->rindex, w->rindex);
     }
-    if (v->root()) {
+    if (v->rindex == rindex) {
       std::vector<int> component;
       while (true) {
-        const auto w = S.top();
+        auto w = S.top();
         S.pop();
-        w->offStack();
-        component.push_back(w - &vertices.front());
+        component.push_back(w - front);
+        w->rindex = max_size;
         if (v == w) {
           break;
         }
-      };
+      }
       components.push_back(component);
     }
   }
 
 public:
-  constexpr tarjan(const std::span<Vertex> vertices) noexcept : vertices(vertices) {
+  constexpr scc(const std::span<Vertex> vertices) noexcept : front(&vertices.front()) {
     for (auto &vertex : vertices) {
-      build_scc(&vertex);
+      tarjan(&vertex);
     }
   }
 
-  [[nodiscard]] constexpr auto scc() const { return std::ranges::reverse_view(components); }
+  [[nodiscard]] constexpr auto result() const { return std::ranges::reverse_view(components); }
 };
 
 int main() {
   std::cin.tie(nullptr)->sync_with_stdio(false);
-  Vertex vertices[500'000];
+  static Vertex vertices[max_size];
   std::istream_iterator<size_t> ints(std::cin);
   const auto N = *ints++;
   const auto M = *ints++;
@@ -82,8 +65,8 @@ int main() {
     from.successors.push_back(&to);
   }
 
-  tarjan tarjan({std::begin(vertices), N});
-  const auto components = tarjan.scc();
+  scc tarjan({std::begin(vertices), N});
+  const auto components = tarjan.result();
 
   std::cout << std::ranges::size(components) << '\n';
   for (const auto &component : components) {

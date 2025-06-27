@@ -1,0 +1,5 @@
+-std=c++23
+-Werror
+-Wpointer-arith
+-Wimplicit-fallthrough
+-Wno-c2x-extensions

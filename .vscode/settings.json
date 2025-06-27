@@ -68,6 +68,17 @@
         "LDFLAGS='-Wl,--gdb-index -flto=thin -Wl,--thinlto-jobs=4 -Wl,-cache_path_lto,.llvmcache'",
         "CXXFLAGS='-glldb -gsplit-dwarf -flto=thin'"
       ]
-    }
+    },
+    {
+      "name": "SCC",
+      "makeDirectory": "${workspaceFolder}/scc",
+      "makeArgs": [
+        "--jobs",
+        "SHELL=/opt/homebrew/bin/bash"
+      ],
+      "preConfigureArgs": [
+        "CXXFLAGS='-glldb -gsplit-dwarf'"
+      ]
+    },
   ]
 }
