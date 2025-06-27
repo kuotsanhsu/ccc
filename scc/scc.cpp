@@ -3,7 +3,6 @@
 #include <iterator>
 #include <ranges>
 #include <span>
-#include <stack>
 #include <vector>
 
 constexpr size_t max_size{500'000};
@@ -15,31 +14,35 @@ struct Vertex {
 
 class scc {
   const Vertex *front;
-  std::stack<Vertex *> S;
-  std::vector<std::vector<int>> components;
+  std::array<Vertex *, max_size> stack;
+  Vertex **top = stack.begin();
+  Vertex **component = stack.end();
+  std::array<size_t, max_size> component_sizes;
+  size_t *szs = component_sizes.end();
 
   constexpr void tarjan(Vertex *const v) {
     if (v->rindex) {
       return;
     }
-    S.push(v);
-    const auto rindex = v->rindex = S.size();
+    *top++ = v;
+    const auto rindex = v->rindex = top - stack.begin();
     for (auto w : v->successors) {
       tarjan(w);
       v->rindex = std::min(v->rindex, w->rindex);
     }
     if (v->rindex == rindex) {
-      std::vector<int> component;
+      const auto last = top;
       while (true) {
-        auto w = S.top();
-        S.pop();
-        component.push_back(w - front);
+        auto w = *--top;
         w->rindex = max_size;
         if (v == w) {
           break;
         }
       }
-      components.push_back(component);
+      *--szs = last - top;
+      for (auto v = top; v != last; ++v) {
+        *--component = *v;
+      }
     }
   }
 
@@ -50,7 +53,18 @@ public:
     }
   }
 
-  [[nodiscard]] constexpr auto result() const { return std::ranges::reverse_view(components); }
+  friend std::ostream &operator<<(std::ostream &os, const scc &scc) {
+    os << scc.component_sizes.end() - scc.szs << '\n';
+    auto v = scc.component;
+    for (auto sz = scc.szs; sz != scc.component_sizes.end(); ++sz) {
+      os << *sz;
+      for (auto n = *sz; n--; ++v) {
+        os << ' ' << *v - scc.front;
+      }
+      os << '\n';
+    }
+    return os;
+  }
 };
 
 int main() {
@@ -64,16 +78,6 @@ int main() {
     auto &to = vertices[*ints++];
     from.successors.push_back(&to);
   }
-
-  scc tarjan({std::begin(vertices), N});
-  const auto components = tarjan.result();
-
-  std::cout << std::ranges::size(components) << '\n';
-  for (const auto &component : components) {
-    std::cout << std::ranges::size(component);
-    for (const auto v : component) {
-      std::cout << ' ' << v;
-    }
-    std::cout << '\n';
-  }
+  static scc scc({std::begin(vertices), N});
+  std::cout << scc;
 }
