@@ -5,21 +5,18 @@
 #include <span>
 #include <vector>
 
-constexpr size_t max_size{500'000};
-
 struct Vertex {
   Vertex **rindex{nullptr};
   std::vector<Vertex *> successors{};
 };
 
-class scc {
-  const Vertex *front;
-  std::array<Vertex *, max_size> stack;
-  Vertex **top = stack.begin();
-  Vertex **component = stack.end();
-  size_t K{0};
+void scc(const std::span<Vertex> vertices, const std::span<Vertex *> stack) {
+  const Vertex *const front = &vertices.front();
+  auto top = &*stack.begin();
+  auto component = &*stack.end();
+  size_t K = 0;
 
-  constexpr Vertex **tarjan(Vertex *const v) {
+  const auto tarjan = [&top, &component, &K](this auto &&self, Vertex *const v) -> Vertex ** {
     if (v->rindex) {
       return v->rindex;
     }
@@ -27,7 +24,7 @@ class scc {
     *top++ = v;
     auto min_rindex = rindex;
     for (auto w : v->successors) {
-      min_rindex = std::min(min_rindex, tarjan(w));
+      min_rindex = std::min(min_rindex, self(w));
     }
     v->rindex = min_rindex;
     if (v->rindex == rindex) {
@@ -40,40 +37,34 @@ class scc {
       ++K;
     }
     return v->rindex;
+  };
+
+  for (auto &vertex : vertices) {
+    tarjan(&vertex);
   }
 
-public:
-  constexpr scc(const std::span<Vertex> vertices) noexcept : front(&vertices.front()) {
-    for (auto &vertex : vertices) {
-      tarjan(&vertex);
+  std::cout << K << '\n';
+  for (auto v = component; v != &*stack.end();) {
+    const auto last = (*v)->rindex;
+    std::cout << last - v;
+    while (v != last) {
+      std::cout << ' ' << *v++ - front;
     }
+    std::cout << '\n';
   }
-
-  friend std::ostream &operator<<(std::ostream &os, const scc &scc) {
-    os << scc.K << '\n';
-    for (auto v = scc.component; v != scc.stack.end();) {
-      const auto last = (*v)->rindex;
-      os << last - v;
-      while (v != last) {
-        os << ' ' << *v++ - scc.front;
-      }
-      os << '\n';
-    }
-    return os;
-  }
-};
+}
 
 int main() {
   std::cin.tie(nullptr)->sync_with_stdio(false);
-  static Vertex vertices[max_size];
   std::istream_iterator<size_t> ints(std::cin);
   const auto N = *ints++;
   const auto M = *ints++;
+  static std::array<Vertex, 500'000> vertices;
   for (const auto _ : std::views::iota(size_t{}, M)) {
     auto &from = vertices[*ints++];
     auto &to = vertices[*ints++];
     from.successors.push_back(&to);
   }
-  static scc scc({std::begin(vertices), N});
-  std::cout << scc;
+  static std::array<Vertex *, vertices.size()> stack;
+  scc({std::begin(vertices), N}, stack);
 }
