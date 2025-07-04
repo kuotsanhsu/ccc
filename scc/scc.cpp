@@ -14,41 +14,50 @@ struct Vertex {
 
 class scc {
   static inline std::array<Vertex *, max_size> S;
+  const Vertex *front;
   Vertex **stack = S.begin();
-  std::vector<std::vector<Vertex *>> components;
+  Vertex **component = S.end();
+  size_t K{0};
 
   constexpr void tarjan(Vertex *const v) {
     if (v->rindex) {
       return;
     }
-    *stack++ = v;
     const auto rindex = v->rindex = stack;
+    *stack++ = v;
     for (auto w : v->successors) {
       tarjan(w);
       v->rindex = std::min(v->rindex, w->rindex);
     }
     if (v->rindex == rindex) {
-      std::vector<Vertex *> component;
-      while (true) {
-        const auto w = *--stack;
-        component.push_back(w);
-        w->rindex = S.end();
-        if (v == w) {
-          break;
-        }
-      }
-      components.push_back(component);
+      const auto last = component;
+      do {
+        (*--component = *--stack)->rindex = last;
+      } while (stack != rindex);
+      ++K;
     }
   }
 
 public:
-  constexpr scc(const std::span<Vertex> vertices) noexcept {
+  constexpr scc(const std::span<Vertex> vertices) noexcept : front(&vertices.front()) {
     for (auto &vertex : vertices) {
       tarjan(&vertex);
     }
   }
 
-  [[nodiscard]] constexpr auto result() const { return std::ranges::reverse_view(components); }
+  friend std::ostream &operator<<(std::ostream &os, const scc &scc) {
+    os << scc.K << '\n';
+    for (auto v = scc.component; v != scc.S.end();) {
+      const auto last = (*v)->rindex;
+      os << last - v;
+      for (auto w = last; w != v;) {
+        os << ' ' << *--w - scc.front;
+      }
+      os << '\n';
+      v = last;
+    }
+    return os;
+  }
 };
 
 int main() {
@@ -62,17 +71,5 @@ int main() {
     auto &to = vertices[*ints++];
     from.successors.push_back(&to);
   }
-
-  const auto front = std::begin(vertices);
-  scc tarjan({front, N});
-  const auto components = tarjan.result();
-
-  std::cout << std::ranges::size(components) << '\n';
-  for (const auto &component : components) {
-    std::cout << std::ranges::size(component);
-    for (const auto v : component) {
-      std::cout << ' ' << v - front;
-    }
-    std::cout << '\n';
-  }
+  std::cout << scc({std::begin(vertices), N});
 }
