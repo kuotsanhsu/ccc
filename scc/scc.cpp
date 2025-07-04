@@ -1,4 +1,3 @@
-// #pragma GCC optimize("Ofast")
 #include <algorithm>
 #include <forward_list>
 #include <iostream>
@@ -30,10 +29,10 @@ void scc(const std::span<Vertex> vertices, const std::span<Vertex *> stack) {
     const auto rindex = v->rindex = top;
     *top++ = v;
     v->rindex = std::ranges::fold_left(
-        v->successors | std::views::transform([self](auto &&v) { return self(v); }), rindex,
-        [](auto &&a, auto &&b) { return std::min(a, b); });
+        v->successors, rindex,
+        [self](Vertex **min_rindex, Vertex *v) constexpr { return std::min(min_rindex, self(v)); });
     if (v->rindex == rindex) {
-      std::for_each(rindex, top, [last = component, &component](Vertex *pw) -> void {
+      std::for_each(rindex, top, [last = component, &component](Vertex *pw) constexpr {
         *--component = pw;
         pw->rindex = last;
       });
