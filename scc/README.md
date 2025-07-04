@@ -1,2 +1,8 @@
 - Library Checker, [Strongly Connected Components](https://judge.yosupo.jp/problem/scc)
+    - [fastest solution](https://judge.yosupo.jp/submission/287255): 51 ms, 35.23 Mib.
+        - `#pragma GCC optimize("Ofast")`
+        - Tarjan
+        - CSR
+            - https://www.boost.org/doc/libs/1_42_0/libs/graph/doc/compressed_sparse_row.html
+            - https://medium.com/@codeinseoul/introduction-to-graph-algorithms-a462ddc86783
 - [Download testcases](https://library-checker-testcases.hotman78.com)
