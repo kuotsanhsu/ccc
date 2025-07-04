@@ -1,10 +1,8 @@
 // #pragma GCC optimize("Ofast")
 #include <algorithm>
-#include <execution>
 #include <forward_list>
 #include <iostream>
 #include <memory_resource>
-#include <numeric>
 #include <ranges>
 
 struct Vertex {
@@ -31,9 +29,9 @@ void scc(const std::span<Vertex> vertices, const std::span<Vertex *> stack) {
     }
     const auto rindex = v->rindex = top;
     *top++ = v;
-    v->rindex = std::transform_reduce(
-        std::execution::seq, v->successors.begin(), v->successors.end(), rindex,
-        [](auto &&a, auto &&b) { return std::min(a, b); }, self);
+    v->rindex = std::ranges::fold_left(
+        v->successors | std::views::transform([self](auto &&v) { return self(v); }), rindex,
+        [](auto &&a, auto &&b) { return std::min(a, b); });
     if (v->rindex == rindex) {
       std::for_each(rindex, top, [last = component, &component](Vertex *pw) -> void {
         *--component = pw;
