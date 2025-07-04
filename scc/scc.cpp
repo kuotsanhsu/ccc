@@ -3,27 +3,27 @@
 #include <iterator>
 #include <ranges>
 #include <span>
-#include <stack>
 #include <vector>
 
 constexpr size_t max_size{500'000};
 
 struct Vertex {
-  size_t rindex{0};
+  Vertex **rindex{nullptr};
   std::vector<Vertex *> successors{};
 };
 
 class scc {
   const Vertex *front;
-  std::stack<Vertex *> S;
+  static inline std::array<Vertex *, max_size> S;
+  Vertex **stack = S.begin();
   std::vector<std::vector<int>> components;
 
   constexpr void tarjan(Vertex *const v) {
     if (v->rindex) {
       return;
     }
-    S.push(v);
-    const auto rindex = v->rindex = S.size();
+    *stack++ = v;
+    const auto rindex = v->rindex = stack;
     for (auto w : v->successors) {
       tarjan(w);
       v->rindex = std::min(v->rindex, w->rindex);
@@ -31,10 +31,9 @@ class scc {
     if (v->rindex == rindex) {
       std::vector<int> component;
       while (true) {
-        auto w = S.top();
-        S.pop();
+        const auto w = *--stack;
         component.push_back(w - front);
-        w->rindex = max_size;
+        w->rindex = S.end();
         if (v == w) {
           break;
         }
@@ -55,7 +54,7 @@ public:
 
 int main() {
   std::cin.tie(nullptr)->sync_with_stdio(false);
-  static Vertex vertices[max_size];
+  static std::array<Vertex, max_size> vertices;
   std::istream_iterator<size_t> ints(std::cin);
   const auto N = *ints++;
   const auto M = *ints++;
