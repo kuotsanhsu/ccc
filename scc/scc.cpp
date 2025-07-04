@@ -13,10 +13,9 @@ struct Vertex {
 };
 
 class scc {
-  const Vertex *front;
   static inline std::array<Vertex *, max_size> S;
   Vertex **stack = S.begin();
-  std::vector<std::vector<int>> components;
+  std::vector<std::vector<Vertex *>> components;
 
   constexpr void tarjan(Vertex *const v) {
     if (v->rindex) {
@@ -29,10 +28,10 @@ class scc {
       v->rindex = std::min(v->rindex, w->rindex);
     }
     if (v->rindex == rindex) {
-      std::vector<int> component;
+      std::vector<Vertex *> component;
       while (true) {
         const auto w = *--stack;
-        component.push_back(w - front);
+        component.push_back(w);
         w->rindex = S.end();
         if (v == w) {
           break;
@@ -43,7 +42,7 @@ class scc {
   }
 
 public:
-  constexpr scc(const std::span<Vertex> vertices) noexcept : front(&vertices.front()) {
+  constexpr scc(const std::span<Vertex> vertices) noexcept {
     for (auto &vertex : vertices) {
       tarjan(&vertex);
     }
@@ -64,14 +63,15 @@ int main() {
     from.successors.push_back(&to);
   }
 
-  scc tarjan({std::begin(vertices), N});
+  const auto front = std::begin(vertices);
+  scc tarjan({front, N});
   const auto components = tarjan.result();
 
   std::cout << std::ranges::size(components) << '\n';
   for (const auto &component : components) {
     std::cout << std::ranges::size(component);
     for (const auto v : component) {
-      std::cout << ' ' << v;
+      std::cout << ' ' << v - front;
     }
     std::cout << '\n';
   }
