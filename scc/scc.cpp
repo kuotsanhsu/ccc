@@ -1,13 +1,18 @@
-#include <array>
+#include <forward_list>
 #include <iostream>
-#include <iterator>
+#include <memory_resource>
 #include <ranges>
-#include <span>
-#include <vector>
 
 struct Vertex {
+private:
+  static inline std::array<std::byte, 500'000 * (sizeof(nullptr) + sizeof(Vertex *))> buffer;
+  static inline std::pmr::monotonic_buffer_resource mbr{buffer.data(), buffer.size()};
+  static inline std::pmr::polymorphic_allocator<Vertex *> pa{&mbr};
+
+public:
   Vertex **rindex{nullptr};
-  std::vector<Vertex *> successors{};
+  std::pmr::forward_list<Vertex *> successors{pa};
+  decltype(successors)::const_iterator last_successor{successors.cbefore_begin()};
 };
 
 void scc(const std::span<Vertex> vertices, const std::span<Vertex *> stack) {
@@ -63,7 +68,7 @@ int main() {
   for (const auto _ : std::views::iota(size_t{}, M)) {
     auto &from = vertices[*ints++];
     auto &to = vertices[*ints++];
-    from.successors.push_back(&to);
+    from.last_successor = from.successors.insert_after(from.last_successor, &to);
   }
   static std::array<Vertex *, vertices.size()> stack;
   scc({std::begin(vertices), N}, stack);
