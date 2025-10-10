@@ -39,3 +39,9 @@ Safari can't open the page "http://127.0.0.1:3000/index.html". The error is: "Na
 - https://stackoverflow.com/questions/72090155/what-web-component-features-are-not-supported-by-safari-desktop-and-safari-ios
 - https://github.com/mdn/web-components-examples
 - https://stackoverflow.com/questions/64304353/main-differences-between-lit-element-web-components-react/64307820#64307820
+
+## Fonts
+
+- https://css-tricks.com/snippets/css/system-font-stack/
+- [Canela](https://commercialtype.com/catalog/canela/canela) use by Apple Books.
+- [How to Load and Use Custom CSS Fonts: A Complete Guide](https://www.digitalocean.com/community/tutorials/how-to-load-and-use-custom-fonts-with-css)
