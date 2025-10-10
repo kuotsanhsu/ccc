@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <style>
+    body {
+      background-color: antiquewhite;
+    }
+
+    main {
+      margin: 0 auto;
+      width: 800px;
+      font-family: Galliard, Yale, Georgia, 'Times New Roman', Times, serif;
+      border: 1px solid silver;
+      box-shadow: 0 0 10px 2px gray;
+    }
+
+    .center-small-caps {
+      text-align: center;
+      font-variant-caps: small-caps;
+      font-weight: bold;
+    }
+
+    #inspector {
+      width: 200px;
+      margin: unset;
+      padding: unset;
+      border: unset;
+      position: fixed;
+      top: 10px;
+      left: 10px;
+    }
+
+    main [contenteditable] {
+      /* caret-color: blue; */
+      /* -webkit-user-select: text; */
+      user-select: text;
+    }
+  </style>
+</head>
+
+<body>
+  <dialog id="inspector" open>
+    <ol>
+      <script>"use strict";
+        /** @type {Node | null} */
+        let inspectedNode = null;
+        const refresh_element_hierarchy = function () {
+          const hierarchy_list = document.currentScript.parentElement;
+          /** @type {(event: MouseEvent) => void} */
+          return function (event) {
+            if (!event.ctrlKey) return;
+            let reverse_hierarchy = [];
+            for (let node = inspectedNode = event.target; node != document.body; node = node.parentNode) {
+              const li = document.createElement("li");
+              li.appendChild(document.createElement("pre")).textContent = node.nodeName;
+              reverse_hierarchy.push(li);
+            }
+            hierarchy_list.replaceChildren(...reverse_hierarchy.reverse());
+          };
+        }();
+      </script>
+    </ol>
+  </dialog>
+  <main onmouseover="refresh_element_hierarchy(event)" onclick="event.target.contentEditable = true">
+    <script>
+      document.currentScript.parentElement.addEventListener('focusout', function (event) {
+        event.target.contentEditable = false;
+      });
+    </script>
+    <header class="title">
+      <h1 class="center-small-caps">An Introduction to Classical Real Analysis</h1>
+      <p>
+      <address class="center-small-caps"><a rel="author"
+          href="https://www.genealogy.math.ndsu.nodak.edu/id.php?id=11310">Karl R. Stromberg</a></address>
+      <q>Reprinted with corrections by the American Mathematical Society, <time>2015</time></q>–Galley t.p. verso.
+      </p>
+    </header>
+    <hr>
+  </main>
+</body>
+
+</html>

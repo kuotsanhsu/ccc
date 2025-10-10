@@ -5,7 +5,7 @@
     ".clang-tidy": "yaml",
     ".clangd": "yaml"
   },
-  "[jsonc][yaml][cpp]": {
+  "[jsonc][yaml][cpp][html]": {
     "editor.formatOnSave": true,
     "editor.insertSpaces": true,
     "editor.tabSize": 2,
@@ -80,5 +80,10 @@
         "CXXFLAGS='-glldb -gsplit-dwarf'"
       ]
     },
-  ]
+  ],
+  "livePreview.autoRefreshPreview": "On Changes to Saved Files",
+  "livePreview.debugOnExternalPreview": false,
+  "livePreview.openPreviewTarget": "External Browser",
+  "livePreview.serverRoot": "kip",
+  "livePreview.hostIP": "127.0.0.1"
 }
