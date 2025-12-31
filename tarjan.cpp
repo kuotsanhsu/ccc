@@ -1,10 +1,7 @@
 // https://judge.yosupo.jp/problem/scc
 #include <algorithm>
 #include <cassert>
-#include <cstddef>
-#include <initializer_list>
 #include <iostream>
-#include <iterator>
 #include <ranges>
 #include <vector>
 
@@ -48,10 +45,10 @@ public:
       };
     };
 
-    [[nodiscard]] constexpr iterator begin() const {
+    [[nodiscard]] constexpr iterator begin() const noexcept {
       return {sorted.begin(), reverse_component_sizes.rbegin()};
     }
-    [[nodiscard]] constexpr std::vector<std::size_t>::const_iterator end() const {
+    [[nodiscard]] constexpr std::vector<std::size_t>::const_iterator end() const noexcept {
       return sorted.end();
     }
     [[nodiscard]] constexpr size_t size() const noexcept { return reverse_component_sizes.size(); }
@@ -105,11 +102,13 @@ constexpr graph::strong_component_view::strong_component_view(const graph &graph
   assert(y == sorted.begin());
 }
 
-std::ostream &operator<<(std::ostream &os, graph::strong_component_view strong_components) {
+template <typename CharT, typename Traits>
+auto &operator<<(std::basic_ostream<CharT, Traits> &os,
+                 const graph::strong_component_view &strong_components) {
   os << std::ranges::size(strong_components) << '\n';
   for (const auto &component : strong_components) {
     os << std::ranges::size(component);
-    for (const int i : component) {
+    for (const auto i : component) {
       os << ' ' << i;
     }
     os << '\n';
@@ -117,15 +116,27 @@ std::ostream &operator<<(std::ostream &os, graph::strong_component_view strong_c
   return os;
 }
 
-int main() {
-  std::cin.tie(nullptr)->sync_with_stdio(false);
-  int vertex_count, edge_count;
-  std::cin >> vertex_count >> edge_count;
+namespace std {
+template <typename CharT, typename Traits, typename A, typename B>
+auto &operator>>(std::basic_istream<CharT, Traits> &is, std::pair<A, B> &pair) {
+  return is >> pair.first >> pair.second;
+}
+} // namespace std
+
+static constexpr auto scc(std::size_t vertex_count, std::ranges::input_range auto &&edges) {
   graph graph(vertex_count);
-  for (int source, target; std::cin >> source >> target;) {
+  for (const auto [source, target] : edges) {
+    assert(source < vertex_count && target < vertex_count);
     graph.push_edge(source, target);
   }
-  std::cout << graph.strong_components();
+  return graph.strong_components();
+}
+
+int main() {
+  std::cin.tie(nullptr)->sync_with_stdio(false);
+  auto pairs = std::istream_iterator<std::pair<std::size_t, std::size_t>>(std::cin);
+  const auto [vertex_count, edge_count] = *pairs++;
+  std::cout << scc(vertex_count, std::views::counted(pairs, edge_count));
 }
 
 template <typename T> class list {
@@ -146,34 +157,25 @@ public:
   }
 };
 
-static constexpr graph test(std::size_t vertex_count, std::ranges::input_range auto &&edges) {
-  graph graph(vertex_count);
-  for (const auto [source, target] : edges) {
-    assert(source < vertex_count && target < vertex_count);
-    graph.push_edge(source, target);
-  }
-  return graph;
-}
-
 static constexpr bool ranges_of_ranges_equal(auto &&r1, auto &&r2) {
   return std::ranges::equal(r1, r2,
                             [](auto &&r1, auto &&r2) { return std::ranges::equal(r1, r2); });
 }
 
-static_assert(ranges_of_ranges_equal(test(6, //
-                                          std::array<std::pair<int, int>, 7>{{
-                                              {1, 4},
-                                              {5, 2},
-                                              {3, 0},
-                                              {5, 5},
-                                              {4, 1},
-                                              {0, 3},
-                                              {4, 2},
-                                          }})
-                                         .strong_components(),
+// NOLINTBEGIN(cppcoreguidelines-avoid-magic-numbers)
+static_assert(ranges_of_ranges_equal(scc(6, std::array<std::pair<int, int>, 7>{{
+                                                {1, 4},
+                                                {5, 2},
+                                                {3, 0},
+                                                {5, 5},
+                                                {4, 1},
+                                                {0, 3},
+                                                {4, 2},
+                                            }}),
                                      std::initializer_list<std::initializer_list<int>>{
                                          {5},
                                          {4, 1},
                                          {2},
                                          {3, 0},
                                      }));
+// NOLINTEND(cppcoreguidelines-avoid-magic-numbers)
