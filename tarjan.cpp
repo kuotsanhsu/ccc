@@ -12,7 +12,7 @@ constexpr int edge_count_max = 500'000;
 class vertex {
   static std::size_t component_count;
   static std::ptrdiff_t *chain, *index_iter;
-  std::ptrdiff_t *link, *low_link;
+  std::ptrdiff_t *low_link;
   vertex *parent;
   const struct children {
     const children *next;
@@ -20,13 +20,13 @@ class vertex {
   } *children;
 
 public:
-  [[nodiscard]] auto index() const noexcept { return this - vertex_begin; }
-  void stack_after(vertex *parent) noexcept {
+  [[nodiscard]] std::ptrdiff_t *stack_after(vertex *parent,
+                                            std::ptrdiff_t *parent_link = chain) noexcept {
     this->parent = parent;
-    *chain = index();
-    link = low_link = chain++;
+    *chain = chain - parent_link;
+    return low_link = chain++;
   }
-  [[nodiscard]] bool visited() const noexcept { return link != nullptr; }
+  [[nodiscard]] bool visited() const noexcept { return low_link != nullptr; }
   void add_child(vertex &child) noexcept {
     static std::array<struct children, edge_count_max> edge_pool;
     static auto edge_pool_ptr = edge_pool.begin();
@@ -34,23 +34,24 @@ public:
     *edge_pool_ptr = {.next = children, .vertex = &child};
     children = edge_pool_ptr++;
   }
-  void find_component() noexcept {
+  void find_component(std::ptrdiff_t *link) noexcept {
     while (children != nullptr) {
       const auto child = children->vertex;
       children = children->next;
       if (child->visited()) {
         low_link = std::min(low_link, child->low_link);
       } else {
-        child->stack_after(this);
-        __attribute__((musttail)) return child->find_component();
+        __attribute__((musttail)) return child->find_component(child->stack_after(this, link));
       }
     }
+    const auto parent_link = link - *link;
+    *link = this - vertex_begin;
     if (low_link == link) {
       ++component_count;
       const auto component_size = chain - link;
       while (chain != link) {
-        *--index_iter = *--chain;
-        vertices[*chain].low_link = index_iter;
+        const auto i = *--index_iter = *--chain;
+        vertices[i].low_link = index_iter;
       }
       *--index_iter = component_size;
       if (parent == nullptr) {
@@ -59,7 +60,7 @@ public:
     } else {
       parent->low_link = std::min(parent->low_link, low_link);
     }
-    __attribute__((musttail)) return parent->find_component();
+    __attribute__((musttail)) return parent->find_component(parent_link);
   }
 
   static void print(std::ostream &cos) {
@@ -100,8 +101,7 @@ void preallocated(std::size_t vertex_count, std::ranges::input_range auto &&edge
   }
   for (auto &vertex : vertices) {
     if (!vertex.visited()) {
-      vertex.stack_after(nullptr);
-      vertex.find_component();
+      vertex.find_component(vertex.stack_after(nullptr));
     }
   }
   vertex::print(std::cout);
