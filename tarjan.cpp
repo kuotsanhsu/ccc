@@ -4,89 +4,93 @@
 #include <cassert>
 #include <iostream>
 #include <ranges>
-#include <vector>
 
 // log2(500'000) is about 18.897
 constexpr int vertex_count_max = 500'000;
 constexpr int edge_count_max = 500'000;
 
 class vertex {
-  using stack_frame = vertex *;
-  const stack_frame *low_link;
-  stack_frame *prev;
+  static std::size_t component_count;
+  static std::ptrdiff_t *chain, *index_iter;
+  std::ptrdiff_t *link, *low_link;
+  vertex *parent;
   const struct children {
     const children *next;
     struct vertex *vertex;
   } *children;
 
 public:
-  [[nodiscard]] std::ptrdiff_t index() const noexcept { return this - vertex_begin; }
-  stack_frame *stack(stack_frame *prev, stack_frame *&top) {
-    this->prev = prev;
-    low_link = top;
-    *top = this;
-    return top++;
+  [[nodiscard]] auto index() const noexcept { return this - vertex_begin; }
+  void stack_after(vertex *parent) noexcept {
+    this->parent = parent;
+    *chain = index();
+    link = low_link = chain++;
   }
-  [[nodiscard]] bool visited() const noexcept { return low_link != nullptr; }
-  bool same_low_link(const stack_frame *curr) { return low_link == curr; }
-  void update_low_link(const vertex *other) { low_link = std::min(low_link, other->low_link); }
-  void bump_low_link(const stack_frame *high) {
-    low_link = high;
-#ifndef NDEBUG
-    std::clog << ' ' << index();
-#endif
-  }
-  void add_child(vertex &child) {
+  [[nodiscard]] bool visited() const noexcept { return link != nullptr; }
+  void add_child(vertex &child) noexcept {
     static std::array<struct children, edge_count_max> edge_pool;
-    static auto *edge_pool_ptr = edge_pool.begin();
+    static auto edge_pool_ptr = edge_pool.begin();
 
     *edge_pool_ptr = {.next = children, .vertex = &child};
     children = edge_pool_ptr++;
   }
-  vertex *consume_child() {
-    vertex *vertex = nullptr;
-    if (auto &child = children) {
-      vertex = child->vertex;
-      child = child->next;
+  void find_component() noexcept {
+    while (children != nullptr) {
+      const auto child = children->vertex;
+      children = children->next;
+      if (child->visited()) {
+        low_link = std::min(low_link, child->low_link);
+      } else {
+        child->stack_after(this);
+        __attribute__((musttail)) return child->find_component();
+      }
     }
-    return vertex;
-  }
-  static stack_frame *go_back(stack_frame *&curr) { return curr = (*curr)->prev; }
-
-  friend auto &operator<<(std::ostream &cos, const vertex &vertex) {
-    cos << '(';
-    if (vertex.prev != nullptr) {
-      cos << vertex.prev - low_link_begin;
+    if (low_link == link) {
+      ++component_count;
+      const auto component_size = chain - link;
+      while (chain != link) {
+        *--index_iter = *--chain;
+        vertices[*chain].low_link = index_iter;
+      }
+      *--index_iter = component_size;
+      if (parent == nullptr) {
+        return;
+      }
     } else {
-      cos << '*';
+      parent->low_link = std::min(parent->low_link, low_link);
     }
-    cos << " <- " << vertex.low_link - low_link_begin << ") " << vertex.index() << ':';
-    for (const auto *children = vertex.children; children != nullptr; children = children->next) {
-      cos << ' ' << children->vertex->index();
+    __attribute__((musttail)) return parent->find_component();
+  }
+
+  static void print(std::ostream &cos) {
+    cos << component_count << '\n';
+    while (component_count--) {
+      auto count = *index_iter++;
+      cos << count;
+      while (count--) {
+        cos << ' ' << *index_iter++;
+      }
+      cos << '\n';
     }
-    return cos;
   }
 
   static std::span<vertex> get_vertices(std::size_t count) {
     assert(count <= vertices.size());
     return {vertices.begin(), count};
   }
-  static std::span<stack_frame> get_stack(std::size_t count) {
-    assert(count <= dfs_stack.size());
-    return {dfs_stack.begin(), count};
-  }
 
 private:
+  static constinit std::array<std::ptrdiff_t, vertex_count_max << 1> indices;
   static constinit std::array<vertex, vertex_count_max> vertices;
   static constinit const vertex *const vertex_begin;
-  static constinit std::array<stack_frame, vertex_count_max> dfs_stack;
-  static constinit const stack_frame *const low_link_begin;
 };
 
+constinit std::array<std::ptrdiff_t, vertex_count_max << 1> vertex::indices{};
+std::size_t vertex::component_count = 0;
+std::ptrdiff_t *vertex::chain = indices.begin();
+std::ptrdiff_t *vertex::index_iter = indices.end();
 constinit std::array<vertex, vertex_count_max> vertex::vertices{};
 constinit const vertex *const vertex::vertex_begin = vertices.cbegin();
-constinit std::array<vertex::stack_frame, vertex_count_max> vertex::dfs_stack{};
-constinit const vertex::stack_frame *const vertex::low_link_begin = dfs_stack.cbegin();
 
 namespace {
 void preallocated(std::size_t vertex_count, std::ranges::input_range auto &&edges) {
@@ -94,59 +98,13 @@ void preallocated(std::size_t vertex_count, std::ranges::input_range auto &&edge
   for (const auto [source, target] : edges) {
     vertices[source].add_child(vertices[target]);
   }
-
-  std::vector<std::ptrdiff_t> reverse_component_sizes;
-  auto dfs_stack = vertex::get_stack(vertex_count);
-  auto *sorted = dfs_stack.end().base();
-  for (auto *top = dfs_stack.begin().base(); auto &vertex : vertices) {
-    // assert(top == dfs_stack.begin());
-    // __builtin_debugtrap();
-    if (vertex.visited()) {
-      continue;
-    }
-    for (auto *curr = vertex.stack(nullptr, top);;) {
-#ifndef NDEBUG
-      std::clog << **curr << '\n';
-#endif
-      while (auto *vertex = (*curr)->consume_child()) {
-        if (vertex->visited()) {
-          (*curr)->update_low_link(vertex);
-        } else {
-          curr = vertex->stack(curr, top);
-          goto end;
-        }
-      }
-      if ((*curr)->same_low_link(curr)) {
-        reverse_component_sizes.push_back(top - curr);
-#ifndef NDEBUG
-        std::clog << '[' << reverse_component_sizes.back() << ']';
-#endif
-        while (top != curr) {
-          (*--sorted = *--top)->bump_low_link(sorted);
-        }
-#ifndef NDEBUG
-        std::clog << '\n';
-#endif
-        if (!vertex::go_back(curr)) {
-          break;
-        }
-      } else {
-        auto *vertex = *curr;
-        (*vertex::go_back(curr))->update_low_link(vertex);
-      }
-    end:
+  for (auto &vertex : vertices) {
+    if (!vertex.visited()) {
+      vertex.stack_after(nullptr);
+      vertex.find_component();
     }
   }
-  // assert(sorted == dfs_stack.begin());
-
-  std::cout << reverse_component_sizes.size() << '\n';
-  for (auto component_size : std::views::reverse(reverse_component_sizes)) {
-    std::cout << component_size;
-    while (component_size--) {
-      std::cout << ' ' << (*sorted++)->index();
-    }
-    std::cout << '\n';
-  }
+  vertex::print(std::cout);
 }
 } // namespace
 
