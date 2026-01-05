@@ -29,3 +29,16 @@
     - Oded Goldreich et al.
 - 2026, [The Joy of Cryptography: An Undergraduate Course in Provable Security](https://mitpress.mit.edu/9780262049979/the-joy-of-cryptography/)
     - Mike Rosulek
+
+## CP
+
+- https://github.com/kuotsanhsu/cses-old
+- https://github.com/kuotsanhsu/throwaway
+- https://github.com/kuotsanhsu/cses
+- https://github.com/kuotsanhsu/library_checker
+- https://github.com/hitonanode/cplib-cpp
+- https://github.com/rindag-devs/cplib
+- https://news.ycombinator.com/item?id=11412583
+    > Yes, in the mid nineties one of Delphi's killer features was super fast compiles. Partly possible due to a single pass compiler but it was just a very fast language to compile.
+    - https://www.reddit.com/r/programming/comments/r9p4c/walter_bright_on_c_compilation_speed/
+    - https://forum.dlang.org/post/nobppszcowozbztprxqx@forum.dlang.org

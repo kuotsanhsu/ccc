@@ -138,12 +138,12 @@ container run -it \
     gcr.io/distroless/cc /build/hello
     # libstdc++ version issue
 
-container run -it --name hello \
-    --mount type=bind,source=build,target=/build,readonly \
-    debian /build/hello
-container start -ia hello
-
 # container run -it --rm -v "$PWD/build:/build:ro" debian /build/hello
 # container run -it --name hello -v "$PWD/build:/build:ro" debian /build/hello
 # container start -ai hello
+
+container run -it --no-dns --name hello \
+    --mount type=bind,source=build,target=/build,readonly \
+    --cwd /build --entrypoint /build/hello debian
+clang++ @compile_flags.txt @aarch64-unknown-linux-gnu.cfg -o build/hello hello.cpp && container start -ia hello
 ```
