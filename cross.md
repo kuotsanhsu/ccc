@@ -104,3 +104,46 @@ No analytics data has been sent yet (nor will any be during this install run).
 - Further documentation:
     https://docs.brew.sh
 ```
+
+## aarch64-linux-gnu with Apple Container
+
+- https://github.com/GoogleContainerTools/distroless/blob/main/cc/README.md
+- https://github.com/GoogleContainerTools/distroless/blob/main/examples/cc/Dockerfile
+- Apple container cannot mount single file:
+    - https://github.com/apple/containerization/issues/79
+- [Add libc++ to distroless/cc](https://github.com/GoogleContainerTools/distroless/issues/394)
+
+```sh
+target='aarch64-unknown-linux-gnu'
+alias brew='/opt/homebrew/bin/brew'
+brew tap messense/macos-cross-toolchains
+brew install "$target"
+toolchain="$(brew --prefix "$target")/toolchain" # /opt/homebrew/opt/aarch64-unknown-linux-gnu
+unalias brew
+
+cat > "${target}.cfg" <<EOF
+--target=$target
+--gcc-toolchain=$toolchain
+--sysroot=$toolchain/$target/sysroot
+--prefix=$toolchain/$target/bin
+EOF
+
+echo "/build/" >> .gitignore
+mkdir build
+clang++ @compile_flags.txt @aarch64-unknown-linux-gnu.cfg -o build/hello hello.cpp
+"$toolchain/$target/bin/readelf" -d build/hello | head
+
+container run -it \
+    --mount type=bind,source=build,target=/build,readonly \
+    gcr.io/distroless/cc /build/hello
+    # libstdc++ version issue
+
+container run -it --name hello \
+    --mount type=bind,source=build,target=/build,readonly \
+    debian /build/hello
+container start -ia hello
+
+# container run -it --rm -v "$PWD/build:/build:ro" debian /build/hello
+# container run -it --name hello -v "$PWD/build:/build:ro" debian /build/hello
+# container start -ai hello
+```
