@@ -9,24 +9,34 @@ constexpr int vertex_count_max = 500'000;
 constexpr int edge_count_max = 500'000;
 
 class vertex {
+  struct state;
+  using link = state *;
+  struct state {
+    std::ptrdiff_t parent_link_offset;
+    vertex *parent;
+    [[nodiscard]] link parent_link() noexcept { return this - parent_link_offset; }
+  };
+  static_assert(sizeof(std::ptrdiff_t) == sizeof(vertex *));
+  static_assert(sizeof(state) == sizeof(std::ptrdiff_t) * 2);
+  static_assert(alignof(state) == alignof(std::ptrdiff_t));
+
   static std::size_t component_count;
-  static std::ptrdiff_t *chain, *index_iter;
-  std::ptrdiff_t *low_link;
+  static link chain;
+  static const link max_link;
+  static std::ptrdiff_t *index_iter;
+  link low_link;
   const struct children {
     const children *next;
     struct vertex *vertex;
   } *children;
 
-  [[nodiscard]] std::ptrdiff_t *stack_after(std::ptrdiff_t parent_index,
-                                            const std::ptrdiff_t *parent_link) noexcept {
-    *chain = chain - parent_link;
-    low_link = chain++;
-    *chain++ = parent_index;
-    return low_link;
+  [[nodiscard]] link stack_after(vertex *parent, link parent_link) noexcept {
+    *chain = {.parent_link_offset = chain - parent_link, .parent = parent};
+    return low_link = chain++;
   }
 
 public:
-  [[nodiscard]] std::ptrdiff_t *stack_after() noexcept { return stack_after(-1, chain); }
+  [[nodiscard]] link stack_after() noexcept { return stack_after(nullptr, chain); }
   [[nodiscard]] bool visited() const noexcept { return low_link != nullptr; }
   void add_child(vertex &child) noexcept {
     static std::array<struct children, edge_count_max> edge_pool;
@@ -35,37 +45,36 @@ public:
     *edge_pool_ptr = {.next = children, .vertex = &child};
     children = edge_pool_ptr++;
   }
-  void find_component(std::ptrdiff_t *link) noexcept {
-    while (children != nullptr) {
-      const auto child = children->vertex;
-      children = children->next;
+  friend void find_component(vertex *curr, link curr_link) noexcept {
+    while (curr->children != nullptr) {
+      const auto child = curr->children->vertex;
+      curr->children = curr->children->next;
       if (child->visited()) {
-        low_link = std::min(low_link, child->low_link);
+        curr->low_link = std::min(curr->low_link, child->low_link);
       } else {
-        const auto child_link = child->stack_after(this - vertex_begin, link);
-        __attribute__((musttail)) return child->find_component(child_link);
+        const auto child_link = child->stack_after(curr, curr_link);
+        __attribute__((musttail)) return find_component(child, child_link);
       }
     }
-    const auto parent_link = link - *link;
-    const auto parent_index = link[1];
-    *link = this - vertex_begin;
-    if (low_link == link) {
+    const auto parent = curr_link->parent;
+    const auto parent_link = curr_link->parent_link();
+    curr_link->parent_link_offset = curr - vertex_begin;
+    if (curr->low_link == curr_link) {
       ++component_count;
-      const auto component_size = (chain - link) >> 1;
-      while (chain != link) {
-        chain -= 2;
-        const auto i = *--index_iter = *chain;
-        vertices[i].low_link = index_iter;
+      const auto component_size = chain - curr_link;
+      while (chain != curr_link) {
+        --chain;
+        const auto i = *--index_iter = chain->parent_link_offset;
+        vertices[i].low_link = max_link;
       }
       *--index_iter = component_size;
-      if (parent_index == -1) {
+      if (parent == nullptr) {
         return;
       }
     } else {
-      auto &parent = vertices[parent_index];
-      parent.low_link = std::min(parent.low_link, low_link);
+      parent->low_link = std::min(parent->low_link, curr->low_link);
     }
-    __attribute__((musttail)) return vertices[parent_index].find_component(parent_link);
+    __attribute__((musttail)) return find_component(parent, parent_link);
   }
 
   static void print(std::ostream &cos) {
@@ -90,7 +99,8 @@ private:
 
 constinit std::array<std::ptrdiff_t, vertex_count_max << 1> vertex::indices{};
 std::size_t vertex::component_count = 0;
-std::ptrdiff_t *vertex::chain = indices.begin();
+vertex::link vertex::chain = reinterpret_cast<link>(indices.begin());
+const vertex::link vertex::max_link = reinterpret_cast<link>(indices.end());
 std::ptrdiff_t *vertex::index_iter = indices.end();
 constinit std::array<vertex, vertex_count_max> vertex::vertices{};
 constinit const vertex *const vertex::vertex_begin = vertices.cbegin();
@@ -103,7 +113,7 @@ void preallocated(std::size_t vertex_count, std::ranges::input_range auto &&edge
   }
   for (auto &vertex : vertices) {
     if (!vertex.visited()) {
-      vertex.find_component(vertex.stack_after());
+      find_component(&vertex, vertex.stack_after());
     }
   }
   vertex::print(std::cout);
