@@ -2,96 +2,80 @@
 // https://judge.yosupo.jp/submission/287255
 // https://honam0905.github.io/CP-library
 #include <cstddef>
+#include <forward_list>
+#include <functional>
 #include <iostream>
 #include <optional>
 #include <ranges>
 #include <utility>
+#include <vector>
 
 // log2(500'000) is about 18.897
 constexpr int vertex_count_max = 500'000;
 constexpr int edge_count_max = 500'000;
 
-class vertex {
+struct vertex;
+
+class state {
+  static state *top;
+
+  const state *low_link;
+  vertex *parent;
+
+  state(vertex *parent) noexcept : low_link(this), parent(parent) {}
+
 public:
-  class full_vertex {
-  public:
-    class state {
-      std::ptrdiff_t parent_link_offset;
-      vertex *parent;
+  static state *push_after(vertex *parent) noexcept { return new (top++) state(parent); }
 
-    public:
-      state(full_vertex fv) noexcept : parent_link_offset(chain - fv.link), parent(fv.vertex) {}
-      [[nodiscard]] full_vertex destruct(vertex *vertex) noexcept {
-        return {std::exchange(parent, vertex), this - parent_link_offset};
+  [[nodiscard]] const state *get_low_link() const noexcept { return low_link; }
+  void set_low_link(const state *link) noexcept { low_link = std::min(low_link, link); }
+
+  /// Effectively returns `parent`.
+  [[nodiscard]] vertex *destruct(vertex *vertex) noexcept { return std::exchange(parent, vertex); }
+  /// `vertex` must be called after `destruct`.
+  static std::ranges::sized_range auto pop_after(state *link) noexcept {
+    return std::ranges::subrange(link, std::exchange(top, link)) |
+           std::views::transform(&state::parent);
+    // | std::views::reverse;
+  }
+};
+
+class vertex {
+  static state *const max_link;
+  static vertex *const vertex_end;
+
+  state *link;
+  std::pmr::forward_list<std::reference_wrapper<vertex>> children;
+
+public:
+  [[nodiscard]] vertex *child() noexcept {
+    while (!children.empty()) {
+      vertex &child = children.front();
+      children.pop_front();
+      if (child.link == nullptr) {
+        child.link = state::push_after(this);
+        return &child;
       }
-      /// `collect` must be called after `destruct`.
-      [[nodiscard]] vertex *collect() const noexcept {
-        parent->low_link = max_link;
-        return parent;
-      }
-    };
-
-    full_vertex() noexcept : vertex(nullptr), link(chain) {}
-
-    [[nodiscard]] full_vertex push(struct vertex *child) const noexcept {
-      *chain = state(*this);
-      return {child, child->low_link = chain++};
+      link->set_low_link(child.link);
     }
-
-    [[nodiscard]] std::optional<full_vertex> child() const noexcept {
-      while (vertex->children != nullptr) {
-        const auto child = vertex->children->vertex;
-        vertex->children = vertex->children->next;
-        if (child->visited()) {
-          vertex->low_link = std::min(vertex->low_link, child->low_link);
-        } else {
-          return push(child);
-        }
-      }
-      return std::nullopt;
-    }
-    void update_low_link(const full_vertex &other) const noexcept {
-      vertex->low_link = std::min(vertex->low_link, other.vertex->low_link);
-    }
-    [[nodiscard]] bool done() const noexcept { return vertex->low_link == link; }
-
-    [[nodiscard]] full_vertex parent() const noexcept {
-      const auto parent = link->destruct(vertex);
-      return parent;
-    }
-
-    [[nodiscard]] std::ranges::sized_range auto component() const noexcept {
-      return std::ranges::subrange(link, std::exchange(chain, link)) |
-             std::views::transform(&state::collect) | std::views::reverse;
-    }
-
-  private:
-    static state *chain;
-    vertex *vertex;
-    state *link;
-    full_vertex(struct vertex *vertex, state *link) noexcept : vertex(vertex), link(link) {}
-  };
-
-  [[nodiscard]] static auto find_component(const full_vertex &curr) noexcept {
-    // if (auto child = curr.child()) {
-    //   __attribute__((musttail)) return find_component(*child);
-    // }
-    const auto parent = curr.parent();
-    if (curr.done()) {
-      return curr.component();
-    }
-    parent.update_low_link(curr);
-    __attribute__((musttail)) return find_component(parent);
+    return nullptr;
   }
 
-  [[nodiscard]] bool visited() const noexcept { return low_link != nullptr; }
-  void add_child(vertex &child) noexcept {
-    static std::array<struct children, edge_count_max> edge_pool;
-    static auto edge_pool_ptr = edge_pool.begin();
-
-    *edge_pool_ptr = {.next = children, .vertex = &child};
-    children = edge_pool_ptr++;
+  [[nodiscard]] vertex *parent() noexcept {
+    const auto parent = link->destruct(this);
+    const auto low_link = link->get_low_link();
+    if (link == low_link) {
+      const auto strong_component = state::pop_after(link);
+      for (auto vertex : strong_component) {
+        vertex->link = max_link;
+      }
+    } else {
+      parent->link->set_low_link(low_link);
+    }
+    return parent;
   }
+
+  void add_child(vertex &child) noexcept { children.emplace_front(&child); }
 
   static void print(std::ostream &cos) {
     cos << component_count << '\n';
@@ -105,54 +89,57 @@ public:
     }
   }
 
-  static std::span<vertex> get_vertices(std::size_t count) { return {vertices.begin(), count}; }
-
-private:
-  full_vertex::state *low_link;
-  const struct children {
-    const children *next;
-    struct vertex *vertex;
-  } *children;
-
-  static constinit std::array<vertex, vertex_count_max> vertices;
-  static constinit const vertex *const vertex_begin;
-  static constinit std::array<std::ptrdiff_t, vertex_count_max << 1> indices;
-  static full_vertex::state *const max_link;
-  static std::ptrdiff_t *index_iter;
-  static std::size_t component_count;
+  [[nodiscard]] vertex *next() noexcept {
+    for (auto curr = this; curr != vertex_end; ++curr) {
+      if (curr->link == nullptr) {
+        curr->link = state::push_after(nullptr);
+        return curr;
+      }
+    }
+    return nullptr;
+  }
 };
 
-constinit std::array<vertex, vertex_count_max> vertex::vertices{};
-constinit const vertex *const vertex::vertex_begin = vertices.cbegin();
+namespace {
+void fff(vertex *curr) noexcept {
+  while (true) {
+    if (const auto child = curr->child()) {
+      curr = child;
+      continue;
+    }
+    const auto parent = curr->parent();
+  }
+}
+void find_component(vertex &curr) noexcept {
+  if (const auto child = curr.child()) {
+    __attribute__((musttail)) return find_component(*child);
+  }
+  if (const auto parent = curr.parent()) {
+    __attribute__((musttail)) return find_component(*parent);
+  }
+  if (const auto next = curr.next()) {
+    __attribute__((musttail)) return find_component(*next);
+  }
+}
 
-static_assert(sizeof(std::ptrdiff_t) == sizeof(vertex *));
-static_assert(sizeof(vertex::full_vertex::state) == sizeof(std::ptrdiff_t) * 2);
-static_assert(alignof(vertex::full_vertex::state) == alignof(std::ptrdiff_t));
+} // namespace
 
-constinit std::array<std::ptrdiff_t, vertex_count_max << 1> vertex::indices{};
-vertex::full_vertex::state *vertex::full_vertex::chain =
-    reinterpret_cast<vertex::full_vertex::state *>(indices.begin());
-vertex::full_vertex::state *const vertex::max_link =
-    reinterpret_cast<vertex::full_vertex::state *>(indices.end());
-std::ptrdiff_t *vertex::index_iter = indices.end();
-std::size_t vertex::component_count = 0;
+static_assert(sizeof(state) == sizeof(std::ptrdiff_t) * 2);
+static_assert(alignof(state) == alignof(std::ptrdiff_t));
+std::array<std::ptrdiff_t, vertex_count_max << 1> indices{};
+state *state::top = reinterpret_cast<state *>(indices.begin());
+state *const vertex::max_link = reinterpret_cast<state *>(indices.end());
+// std::ptrdiff_t *vertex::index_iter = indices.end();
+// std::size_t vertex::component_count = 0;
 
 namespace {
 void preallocated(std::size_t vertex_count, std::ranges::input_range auto &&edges) {
-  auto vertices = vertex::get_vertices(vertex_count);
+  std::pmr::vector<vertex> vertices(vertex_count);
   for (const auto [source, target] : edges) {
     vertices[source].add_child(vertices[target]);
   }
-  for (auto &vertex : vertices) {
-    if (!vertex.visited()) {
-      const auto component = vertex::find_component(vertex::full_vertex().push(&vertex));
-      const auto component_size = std::ranges::size(component);
-      for (const auto v : component) {
-        v - nullptr;
-      }
-    }
-  }
   vertex::print(std::cout);
+  const auto vvv = vertices;
 }
 } // namespace
 

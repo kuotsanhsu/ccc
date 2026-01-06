@@ -42,3 +42,16 @@
     > Yes, in the mid nineties one of Delphi's killer features was super fast compiles. Partly possible due to a single pass compiler but it was just a very fast language to compile.
     - https://www.reddit.com/r/programming/comments/r9p4c/walter_bright_on_c_compilation_speed/
     - https://forum.dlang.org/post/nobppszcowozbztprxqx@forum.dlang.org
+
+## Safety
+
+- Clang, [C++ Safe Buffers](https://clang.llvm.org/docs/SafeBuffers.html)
+
+## Allocators
+
+- John Farrier, [Custom Allocators in C++: High Performance Memory Management](https://johnfarrier.com/custom-allocators-in-c-high-performance-memory-management/)
+- John Farrier, [7 Interesting (and Powerful) Uses for C++ Iterators](https://johnfarrier.com/7-interesting-and-powerful-uses-for-c-iterators/)
+
+## Debug
+
+- Hacker News, [rr – record and replay debugger for C/C++](https://news.ycombinator.com/item?id=41023547)
