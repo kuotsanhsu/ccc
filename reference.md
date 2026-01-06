@@ -55,3 +55,11 @@
 ## Debug
 
 - Hacker News, [rr – record and replay debugger for C/C++](https://news.ycombinator.com/item?id=41023547)
+
+## ranges
+
+- Stack Overflow, [Is it possible / advisable to return a range?](https://stackoverflow.com/q/67716780/16371358)
+    - `std::ranges::elements_of`
+    - `std::ranges::any_view`
+- Stack Overflow, [Performance of simple c++20 coroutines looks bad. Is this unavoidable? Is this cost of "frame-switching"?](https://stackoverflow.com/q/77794224/16371358)
+    - Type erasure performance implications.
