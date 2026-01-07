@@ -87,12 +87,19 @@
 
 - Clang, [Language Specification for Blocks](https://clang.llvm.org/docs/BlockLanguageSpec.html)
 - Clang, [Block Implementation Specification](https://clang.llvm.org/docs/Block-ABI-Apple.html)
+- libblocksruntime
 
 ## Clang general
 
 - [Official doc listing](https://clang.llvm.org/docs/)
 - [clang options](https://clang.llvm.org/docs/CommandGuide/clang.html)
 - [diagtool](https://clang.llvm.org/docs/CommandGuide/diagtool.html)
+
+## Attributes
+
+- `__attribute__((visibility("default")))`
+- `__attribute__((used))`
+- `__attribute__((weak))`
 
 ## WebAssembly
 
@@ -127,14 +134,22 @@
     - [Import lcov](https://marketplace.visualstudio.com/items?itemName=gregoire.import-lcov)
     - [covertops-cmake-llvm](https://github.com/MetaBarj0/covertops-cmake-llvm)
 - VSCode, [Test Coverage API](https://code.visualstudio.com/updates/v1_88#_test-coverage)
+- Linux, [JITDUMP specification version 2](https://github.com/torvalds/linux/blob/master/tools/perf/Documentation/jitdump-specification.txt)
 
 ## Fuzzers
 
-- libFuzzer
+- arXiv, [Fuzzing: Art, Science, and Engineering](https://arxiv.org/pdf/1812.00140)
+- [FuzzTest](https://github.com/google/fuzztest): obseletes libFuzzer
+- [honggfuzz](https://github.com/google/honggfuzz)
+- [What is AFL and What is it Good for?](https://github.com/google/fuzzing/blob/master/docs/afl-based-fuzzers-overview.md)
 - AFL++
-- FuzzTest
 - Dangerous Assembly, [Coverage-Based Fuzzing](https://tetzank.github.io/posts/coverage-based-fuzzing/)
 - [KCOV: code coverage for fuzzing](https://www.kernel.org/doc/html/latest/dev-tools/kcov.html)
+
+Fuzzing services:
+- OSS-Fuzz
+- ClusterFuzz
+- FuzzBench
 
 ### [syzkaller](https://github.com/google/syzkaller/blob/master/docs/internals.md)
 
@@ -142,6 +157,7 @@
 - https://github.com/google/syzkaller/blob/master/docs/linux/coverage.md
 - [Syscall descriptions](https://github.com/google/syzkaller/blob/master/docs/syscall_descriptions.md)
 - HN, [Why the Linux Kernel doesn't have unit tests?](https://news.ycombinator.com/item?id=33742130)
+    - YouTube, [TDD, Where Did It All Go Wrong (Ian Cooper)](https://www.youtube.com/watch?v=EZ05e7EMOLM)
 - HN, [Google, Xiaomi, and Huawei affected by zero-day flaw that unlocks root access](https://news.ycombinator.com/item?id=21167871)
     - YouTube, [Reflections on kernel development process, quality and testing](https://youtu.be/a2Nv-KJyqPk?t=5239)
 - arXiv, [Psyzkaller: Learning from Historical and On-the-Fly Execution Data for Smarter Seed Generation in OS kernel Fuzzing](https://arxiv.org/abs/2510.08918v1)
