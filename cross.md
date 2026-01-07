@@ -147,3 +147,9 @@ container run -it --no-dns --name hello \
     --cwd /build --entrypoint /build/hello debian
 clang++ @compile_flags.txt @aarch64-unknown-linux-gnu.cfg -o build/hello hello.cpp && container start -ia hello
 ```
+
+## Show submissions
+
+```sh
+git log --pretty='format:%s' --grep='^tarjan: submission '
+```

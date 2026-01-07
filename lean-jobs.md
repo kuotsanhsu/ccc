@@ -1,0 +1,8 @@
+- https://leanprover-community.github.io/archive/stream/284757-job-postings/
+    - [Verification Internships at Microsoft Azure Research](https://leanprover-community.github.io/archive/stream/284757-job-postings/topic/Verification.20Internships.20at.20Microsoft.20Azure.20Research.html)
+    - [Applied Scientist at AWS, ML Compiler](https://leanprover-community.github.io/archive/stream/284757-job-postings/topic/Applied.20Scientist.20at.20AWS.2C.20ML.20Compiler.html)
+    - [Founding Engineer - Lean4, VC-funded startup (Bay Area)](https://leanprover-community.github.io/archive/stream/284757-job-postings/topic/Founding.20Engineer.20-.20Lean4.2C.20VC-funded.20startup.20(Bay.20Area).html)
+    - [Formal Verification Expert (Lean) at Cajal](https://leanprover-community.github.io/archive/stream/284757-job-postings/topic/Formal.20Verification.20Expert.20(Lean).20at.20Cajal.html)
+    - [Lean FRO: Research Software Engineer (Tooling)](https://leanprover-community.github.io/archive/stream/284757-job-postings/topic/Lean.20FRO.3A.20Research.20Software.20Engineer.20(Tooling).html)
+- https://leanprover.zulipchat.com
+    - Log in with Google.

@@ -186,3 +186,43 @@ int main() {
   const auto [vertex_count, edge_count] = *pairs++;
   preallocated(vertex_count, std::views::counted(pairs, edge_count));
 }
+
+/*
+ * [Packed bit fields in c structures - GCC](https://stackoverflow.com/q/25822679/16371358)
+ * Reasons not to use packed bit fields: taking the address of bit fields is UB, ABI is not stable
+ * across compilers, and endianness is troublesome.
+ */
+struct __attribute__((packed)) t1 {
+  int a : 12;
+  int b : 32;
+  int c : 4;
+};
+static_assert(sizeof(t1) == 6);
+
+struct __attribute__((packed)) t2 {
+  int a : 12;
+  int b;
+  int c : 4;
+};
+static_assert(sizeof(t2) == 7);
+
+struct __attribute__((packed)) t3 {
+  _BitInt(12) a;
+  int b;
+  int c : 4;
+};
+static_assert(sizeof(t3) == 7);
+
+struct __attribute__((packed)) t4 {
+  _BitInt(12) a;
+  _BitInt(32) b;
+  _BitInt(4) c;
+};
+static_assert(sizeof(t4) == 7);
+
+struct __attribute__((packed)) t5 {
+  _BitInt(12) a : 12;
+  _BitInt(32) b : 32;
+  _BitInt(4) c : 4;
+};
+static_assert(sizeof(t5) == 6);
