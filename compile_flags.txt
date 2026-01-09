@@ -5,5 +5,7 @@
 -Wpointer-arith
 -Wimplicit-fallthrough
 -Wno-c23-extensions
--nostdinc
+
 --target=wasm32
+-nostdinc
+-fno-short-enums

@@ -57,6 +57,8 @@
 ## Debug
 
 - Hacker News, [rr – record and replay debugger for C/C++](https://news.ycombinator.com/item?id=41023547)
+- Clang, [`__builtin_dump_struct`](https://clang.llvm.org/docs/LanguageExtensions.html#builtin-dump-struct)
+- Clang, [`__builtin_debugtrap`](https://clang.llvm.org/docs/LanguageExtensions.html#builtin-debugtrap)
 
 ## ranges
 
@@ -103,6 +105,8 @@
 - `__attribute__((visibility("default")))`
 - `__attribute__((used))`
 - `__attribute__((weak))`
+- `[[no_unique_address]]`: [empty base optimization](https://en.cppreference.com/w/cpp/language/ebo.html)
+    - [`offsetof`](https://en.cppreference.com/w/cpp/types/offsetof.html)
 
 ## WebAssembly
 
