@@ -94,6 +94,9 @@
 - [Official doc listing](https://clang.llvm.org/docs/)
 - [clang options](https://clang.llvm.org/docs/CommandGuide/clang.html)
 - [diagtool](https://clang.llvm.org/docs/CommandGuide/diagtool.html)
+- [vscode-lldb](https://github.com/llvm/vscode-lldb)
+- [Clang-Repl](https://clang.llvm.org/docs/ClangRepl.html)
+- [Clang’s refactoring engine](https://clang.llvm.org/docs/RefactoringEngine.html)
 
 ## Attributes
 
