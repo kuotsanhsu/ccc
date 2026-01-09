@@ -66,7 +66,7 @@ public:
     if (p == i) {
       return i;
     }
-    [[clang::musttail]] return find_set(p);
+    return parent[i] = find_set(p);
   }
 
   void union_sets(u32 i, u32 j) {
