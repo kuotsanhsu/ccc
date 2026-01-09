@@ -52,12 +52,18 @@ void set_vertex_count(u32 vertex_count) {
 class disjoint_set_union {
   u32 vertex_count;
   u32 *parent;
+  u32 *size;
 
 public:
-  ~disjoint_set_union() { delete[] parent; }
-  disjoint_set_union(u32 vertex_count) : vertex_count(vertex_count), parent(new u32[vertex_count]) {
+  ~disjoint_set_union() {
+    delete[] parent;
+    delete[] size;
+  }
+  disjoint_set_union(u32 vertex_count)
+      : vertex_count(vertex_count), parent(new u32[vertex_count]), size(new u32[vertex_count]) {
     for (auto i = 0; i != vertex_count; ++i) {
       parent[i] = i;
+      size[i] = 1;
     }
   }
 
@@ -73,6 +79,13 @@ public:
     i = find_set(i);
     j = find_set(j);
     if (i != j) {
+      if (size[i] < size[j]) {
+        auto k = i;
+        i = j;
+        j = k;
+      }
+      [[assume(size[i] >= size[j])]];
+      size[i] += size[j];
       parent[j] = i;
     }
   }
